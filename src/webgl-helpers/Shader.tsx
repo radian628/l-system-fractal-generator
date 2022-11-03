@@ -1,5 +1,13 @@
 import { err, ok, Result } from "./Common";
 
+let programBinding: WebGLProgram;
+export function bindProgram(gl: WebGL2RenderingContext, program: WebGLProgram) {
+  if (programBinding !== program) {
+    gl.useProgram(program);
+    programBinding = program;
+  }
+}
+
 let shaderCache = new Map<string, WebGLShader>();
 
 export function getShader(gl: WebGL2RenderingContext, type: number, source: string): Result<WebGLShader, string> {
