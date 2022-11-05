@@ -47,3 +47,75 @@ export function getProgramFromStrings(gl: WebGL2RenderingContext, vsource: strin
   if (!fshader.ok) return fshader;
   return getProgram(gl, vshader.data, fshader.data);
 }
+
+type ComponentCount = "1" | "2" | "3" | "4";
+type ComponentType = "f" | "i" | "ui";
+
+type Matrix3 = [
+  number, number, number,
+  number, number, number,
+  number, number, number,
+]
+
+export type Matrix4 = [
+  number, number, number, number,
+  number, number, number, number,
+  number, number, number, number,
+  number, number, number, number
+];
+
+type UniformData = 
+  [number, `${ComponentType}`]
+  | [[number, number], `${ComponentType}`]
+  | [[number, number, number], `${ComponentType}`]
+  | [[number, number, number, number], `${ComponentType}`]
+  | number
+  | [number, number]
+  | [number, number, number]
+  | [number, number, number, number]
+  | Matrix3
+  | Matrix4;
+
+export function setUniforms(gl: WebGL2RenderingContext, prog: WebGLProgram, uniforms: {
+  [name: string]: UniformData
+}) {
+  function setUniform(loc: WebGLUniformLocation, type: ComponentType, data: number | [number, number] | [number, number, number] | [number, number, number, number]) {
+    const length = Array.isArray(data) ? data.length : 1;
+    const fnName: `uniform${ComponentCount}${ComponentType}` = `uniform${length}${type}`;
+    if (length == 1) {
+      gl[fnName as `uniform1${ComponentType}`](loc, data as number);
+    } else {
+      //@ts-ignore
+      gl[fnName](loc, ...(data as [number, number] | [number, number, number] | [number, number, number, number]));
+    }
+  }
+
+  for (const [uName, uValue] of Object.entries(uniforms)) {
+    const uniformLocation = gl.getUniformLocation(prog, uName);
+    if (uniformLocation === null) {
+      console.error(`Unknown uniform '${uName}`);
+      return;
+    }
+    if (Array.isArray(uValue)) {
+      switch (uValue.length) {
+        case 2:
+        case 3:
+        case 4:
+          if (typeof uValue[1] == "string") {
+            setUniform(uniformLocation, uValue[1], uValue[0]);
+          } else {
+            setUniform(uniformLocation, "f", uValue as [number, number] | [number, number, number] | [number, number, number, number]);
+          }
+          break;
+        case 9:
+          gl.uniformMatrix3fv(uniformLocation, false, uValue);
+          break;
+        case 16:
+          gl.uniformMatrix4fv(uniformLocation, false, uValue);
+          break;
+      }
+    } else {
+      setUniform(uniformLocation, "f", uValue);
+    }
+  }
+}
