@@ -56,11 +56,11 @@ export function createVertexArray(gl: WebGL2RenderingContext, program: WebGLProg
                     settings.offset + i * settings.size * 4
                 );
             }
+            if (settings.divisor != undefined) {
+                gl.vertexAttribDivisor(attribLocation + i, settings.divisor);
+            }
+            gl.enableVertexAttribArray(attribLocation + i);
         }
-        if (settings.divisor != undefined) {
-            gl.vertexAttribDivisor(attribLocation, settings.divisor);
-        }
-        gl.enableVertexAttribArray(attribLocation);
     }
     return ok(vao);
 }

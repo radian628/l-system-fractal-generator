@@ -46,9 +46,10 @@ export function MainCanvas() {
         inputRef.current.mouseDeltas.y = 0;
 
         const gl = gls.gl;
+        gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
         gl.viewport(0, 0, window.innerWidth, window.innerHeight);
-        gl.clearColor(1.0, 0.0, 0.0, 1.0);
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         bindProgram(gl, gls.program);
         bindVertexArray(gl, gls.vao);
@@ -66,7 +67,7 @@ export function MainCanvas() {
 
         });
         //bindBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, gls.cubeIndexBuffer);
-        gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_BYTE, 0);
+        gl.drawElementsInstanced(gl.TRIANGLES, 36, gl.UNSIGNED_BYTE, 0, gls.lSystemInstanceCount);
     });
 
     if (!glState.glStatus.ok) {

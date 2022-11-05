@@ -5,6 +5,8 @@ import FRAG_SHADER from "./l-system.frag?raw";
 import { getProgramFromStrings } from "../webgl-helpers/Shader";
 import { createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
 import { createVertexArray } from "../webgl-helpers/VertexArray";
+import { applyLSystem, iterateLSystem, mapLSystemApplication, optimizeLSystemSpec } from "../l-system/LSystemGenerator";
+import { mat4, vec3 } from "gl-matrix";
 
 export function useAnimationFrame(callback: (time: number) => void) {
 
@@ -31,6 +33,8 @@ type WebGLState = {
     program: WebGLProgram,
     squareBuffer: WebGLBuffer,
     vao: WebGLVertexArrayObject,
+    lSystemMatrixBuffer: WebGLBuffer,
+    lSystemInstanceCount: number,
 
     cubeBuffer: WebGLBuffer,
     cubeIndexBuffer: WebGLBuffer
@@ -102,6 +106,47 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
     ]), gl.STATIC_DRAW, gl.ELEMENT_ARRAY_BUFFER);
     if (!cubeIndexBuffer.ok) return err("Failed to create cube index buffer");
 
+
+    let lSystemInstanceBuffer: Result<WebGLBuffer, string> = err("Failed to create L system instance buffer.");
+    let lSystemInstanceCount = 0;
+    const optSpec = optimizeLSystemSpec({
+        axiom: ["A"],
+        substitutions: new Map([
+            ["A", "B-A-B".split("")],
+            ["B", "A+B+A".split("")]
+        ]),
+        alphabet: ["A", "B", "+", "-"]
+    });
+    if (optSpec.ok) {
+        const app = mapLSystemApplication({
+            executions: new Map([
+                ["A", m => {
+                    return mat4.translate(m, m, vec3.fromValues(0, 0, 1));
+                }],
+                ["B", m => {
+                    return mat4.translate(m, m, vec3.fromValues(0, 0, 1));
+                }],
+                ["+", m => {
+                    return mat4.rotateY(m, m, -Math.PI / 3);
+                }],
+                ["-", m => {
+                    return mat4.rotateY(m, m, Math.PI / 3);
+                }]
+            ])
+        }, optSpec.data.map);
+        if (app.ok) {
+            const iteratedLSystem = iterateLSystem(optSpec.data.spec, 8);
+            const matrices = applyLSystem(app.data, iteratedLSystem);
+            lSystemInstanceCount = iteratedLSystem.length;
+            console.log(matrices.map(m => Array.from(m)).flat());
+            lSystemInstanceBuffer = createBufferWithData(gl, new Float32Array(
+                matrices.map(m => Array.from(m)).flat()
+            ), gl.STATIC_DRAW);
+        }
+    }
+    if (!lSystemInstanceBuffer.ok) return lSystemInstanceBuffer;
+
+
     const v = createVertexArray(gl, program.data, {
         in_pos: {
             size: 3,
@@ -116,6 +161,15 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
             stride: 24,
             offset: 12,
             buffer: cubeBuffer.data
+        },
+        transform: {
+            size: 4,
+            type: gl.FLOAT,
+            stride: 64,
+            offset: 0,
+            buffer: lSystemInstanceBuffer.data,
+            divisor: 1,
+            slots: 4
         }
     }, cubeIndexBuffer.data);
     if (!v.ok) return (err("Failed to create VAO."));
@@ -125,6 +179,8 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
         program: program.data,
         squareBuffer: buf.data,
         vao: v.data,
+        lSystemMatrixBuffer: lSystemInstanceBuffer.data,
+        lSystemInstanceCount,
 
         cubeBuffer: cubeBuffer.data,
         cubeIndexBuffer: cubeIndexBuffer.data

@@ -5,11 +5,7 @@ precision highp float;
 in vec3 in_pos;
 in vec3 in_normal;
 
-const mat4 transform = mat4(
-    1, 0, 0, 0, 
-    0, 1, 0, 0, 
-    0, 0, 1, 0, 
-    0, 0, 0, 1);
+in mat4 transform;
 
 out vec3 pos;
 out vec3 normal;
