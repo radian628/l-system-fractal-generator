@@ -15,7 +15,7 @@ export function setVertexArrayBinding(binding: WebGLVertexArrayObject) {
   vertexArrayBinding = binding;
 }
 
-export function createVertexArray(gl: WebGL2RenderingContext, program: WebGLProgram, attribs: {
+export type Attribs = {
     [attribName: string]: {
         size: number,
         type: number,
@@ -27,9 +27,15 @@ export function createVertexArray(gl: WebGL2RenderingContext, program: WebGLProg
         divisor?: number,
         buffer: WebGLBuffer
     }
-}, indexBuffer?: WebGLBuffer): Result<WebGLVertexArrayObject, string> {
-    const vao = gl.createVertexArray();
-    if (!vao) return err("Failed to create VAO.");
+};
+
+export function addDataToVertexArray(
+    gl: WebGL2RenderingContext, 
+    vao: WebGLVertexArrayObject,
+    program: WebGLProgram, 
+    attribs: Attribs, 
+    indexBuffer?: WebGLBuffer
+) {
     bindVertexArray(gl, vao);
     bindProgram(gl, program);
     if (indexBuffer) {
@@ -65,5 +71,17 @@ export function createVertexArray(gl: WebGL2RenderingContext, program: WebGLProg
             gl.enableVertexAttribArray(attribLocation + i);
         }
     }
+}
+
+
+export function createVertexArray(
+    gl: WebGL2RenderingContext, 
+    program: WebGLProgram, 
+    attribs: Attribs, 
+    indexBuffer?: WebGLBuffer
+): Result<WebGLVertexArrayObject, string> {
+    const vao = gl.createVertexArray();
+    if (!vao) return err("Failed to create VAO.");
+    addDataToVertexArray(gl, vao, program, attribs, indexBuffer);
     return ok(vao);
 }

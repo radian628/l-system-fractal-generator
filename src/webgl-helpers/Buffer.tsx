@@ -37,7 +37,7 @@ export function bufferData(gl: WebGL2RenderingContext, buffer: WebGLBuffer, targ
   gl.bufferData(target, data, usage);
 }
 
-export function createBufferWithData(gl: WebGL2RenderingContext, data: BufferSource, usage: number, target?: number): Result<WebGLBuffer, string> {
+export function createBufferWithData(gl: WebGL2RenderingContext, data: BufferSource | number, usage: number, target?: number): Result<WebGLBuffer, string> {
   const buf = createBuffer(gl);
   if (!buf.ok) return buf;
   bufferData(gl, buf.data, target ? target : gl.ARRAY_BUFFER, data, usage); 

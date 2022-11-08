@@ -35,7 +35,6 @@ export function getShader(gl: WebGL2RenderingContext, type: number, source: stri
 type TransformFeedbackVaryingsOptions = {
   varyings: string[],
   bufferMode: number,
-  tf: WebGLTransformFeedback
 };
 
 export function getProgram(
@@ -49,7 +48,6 @@ export function getProgram(
   gl.attachShader(program, vshader);
   gl.attachShader(program, fshader);
   if (transformFeedbackVaryings) {
-    bindTransformFeedback(gl, transformFeedbackVaryings.tf);
     gl.transformFeedbackVaryings(
       program, 
       transformFeedbackVaryings.varyings,

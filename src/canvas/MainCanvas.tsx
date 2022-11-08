@@ -51,7 +51,6 @@ export function MainCanvas() {
         gl.viewport(0, 0, window.innerWidth, window.innerHeight);
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        bindProgram(gl, gls.program);
         bindVertexArray(gl, gls.vao);
         setUniforms(gl, gls.program, {
             vp: 
@@ -66,8 +65,7 @@ export function MainCanvas() {
                 ).map(e => e)) as Matrix4
 
         });
-        //bindBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, gls.cubeIndexBuffer);
-        gl.drawElementsInstanced(gl.TRIANGLES, 36, gl.UNSIGNED_BYTE, 0, gls.lSystemInstanceCount);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 36 * gls.lSystemInstanceCount, 1);
     });
 
     if (!glState.glStatus.ok) {

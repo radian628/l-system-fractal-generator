@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { err, ok, Result } from "../webgl-helpers/Common";
-import VERT_SHADER from "./l-system.vert?raw";
-import FRAG_SHADER from "./l-system.frag?raw";
+import GEN_VERT_SHADER from "./l-system-generation.vert?raw";
+import GEN_FRAG_SHADER from "./l-system-generation.frag?raw";
+import DISP_VERT_SHADER from "./l-system-display.vert?raw";
+import DISP_FRAG_SHADER from "./l-system-display.frag?raw";
 import { bindProgram, getProgramFromStrings, Matrix4, setUniforms } from "../webgl-helpers/Shader";
 import { bindBuffer, bindBufferBase, bufferData, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
 import { bindVertexArray, createVertexArray } from "../webgl-helpers/VertexArray";
@@ -9,6 +11,8 @@ import { applyLSystem, iterateLSystem, mapLSystemApplication, optimizeAndApplyLS
 import { mat4, vec3 } from "gl-matrix";
 import { bindTransformFeedback } from "../webgl-helpers/TransformFeedback";
 import { transform } from "typescript";
+import { cubeIndices, cubeVertices } from "./VertexData";
+import { deindex } from "../webgl-helpers/WebGLUtils";
 
 export function useUpToDate<T>(state: T) {
     const ref = useRef<T>(state);
@@ -58,12 +62,14 @@ type WebGLState = {
 function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string> {
     const tf = gl.createTransformFeedback();
     if (!tf) return err("Failed to create transform feedback.");
-    const program = getProgramFromStrings(gl, VERT_SHADER, FRAG_SHADER, {
+    const genProgram = getProgramFromStrings(gl, GEN_VERT_SHADER, GEN_FRAG_SHADER, {
         varyings: ["pos", "normal"],
-        bufferMode: gl.INTERLEAVED_ATTRIBS,
-        tf
+        bufferMode: gl.INTERLEAVED_ATTRIBS
     });
-    if (!program.ok) return err("Failed to create shader program.");
+    if (!genProgram.ok) return err("Failed to create shader program.");
+
+    const dispProgram = getProgramFromStrings(gl, DISP_VERT_SHADER, DISP_FRAG_SHADER);
+    if (!dispProgram.ok) return err("Failed to create shader program.");
     
     const buf = createBufferWithData(gl, new Float32Array([
         -1, -1, 1, -1, -1, 1, 
@@ -71,61 +77,16 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
     ]).buffer, gl.STATIC_DRAW);
     if (!buf.ok) return (err("Failed to create buffer."));
 
+    const deindexedCubeVertices = new Float32Array(deindex(cubeVertices, cubeIndices, 4 * 6));
 
-    const cubeBuffer = createBufferWithData(gl, new Float32Array([
-        0, 0, 0, -1, 0, 0,
-        0, 1, 0, -1, 0, 0,
-        0, 1, 1, -1, 0, 0,
-        0, 0, 1, -1, 0, 0,
-        
-        1, 0, 0, 1, 0, 0,
-        1, 1, 0, 1, 0, 0,
-        1, 1, 1, 1, 0, 0,
-        1, 0, 1, 1, 0, 0,
-        
-        0, 0, 0, 0, -1, 0,
-        1, 0, 0, 0, -1, 0,
-        1, 0, 1, 0, -1, 0,
-        0, 0, 1, 0, -1, 0,
-        
-        0, 1, 0, 0, 1, 0,
-        1, 1, 0, 0, 1, 0,
-        1, 1, 1, 0, 1, 0,
-        0, 1, 1, 0, 1, 0,
-
-        0, 0, 0, 0, 0, -1,
-        1, 0, 0, 0, 0, -1,
-        1, 1, 0, 0, 0, -1,
-        0, 1, 0, 0, 0, -1,
-
-        0, 0, 1, 0, 0, 1,
-        1, 0, 1, 0, 0, 1,
-        1, 1, 1, 0, 0, 1,
-        0, 1, 1, 0, 0, 1
-    ]), gl.STATIC_DRAW);
+    const cubeBuffer = createBufferWithData(gl, cubeVertices, gl.STATIC_DRAW);
     if (!cubeBuffer.ok) return err("Failed to create cube buffer");
 
-    const cubeIndexBuffer = createBufferWithData(gl, new Uint8Array([
-        1, 0, 2, 
-        2, 0, 3,
-
-        4, 5, 6, 
-        4, 6, 7,
-
-        8, 9, 10, 
-        8, 10, 11,
-
-        14, 13, 12, 
-        14, 12, 15,
-
-        17, 16, 18, 
-        16, 19, 18,
-
-        20, 21, 22, 
-        20, 22, 23
-    ]), gl.STATIC_DRAW, gl.ELEMENT_ARRAY_BUFFER);
+    const cubeIndexBuffer = createBufferWithData(gl, cubeIndices, gl.STATIC_DRAW, gl.ELEMENT_ARRAY_BUFFER);
     if (!cubeIndexBuffer.ok) return err("Failed to create cube index buffer");
 
+    const deindexedCubeBuffer = createBufferWithData(gl, deindexedCubeVertices, gl.STATIC_DRAW);
+    if (!deindexedCubeBuffer.ok) return err("Failed to create deindexed cube buffer");
 
     let lSystemInstanceBuffer: Result<WebGLBuffer, string> = err("Failed to create L system instance buffer.");
     let lSystemInstanceCount = 0;
@@ -188,52 +149,25 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
     if (!lSystemInstanceBuffer.ok) return lSystemInstanceBuffer;
 
 
-    const v = createVertexArray(gl, program.data, {
+
+
+
+
+
+    const v2 = createVertexArray(gl, genProgram.data, {
         in_pos: {
             size: 3,
             type: gl.FLOAT,
             stride: 24,
             offset: 0,
-            buffer: cubeBuffer.data
+            buffer: deindexedCubeBuffer.data
         },
         in_normal: {
             size: 3,
             type: gl.FLOAT,
             stride: 24,
             offset: 12,
-            buffer: cubeBuffer.data
-        },
-        transform: {
-            size: 4,
-            type: gl.FLOAT,
-            stride: 64,
-            offset: 0,
-            buffer: lSystemInstanceBuffer.data,
-            divisor: 1,
-            slots: 4
-        }
-    }, cubeIndexBuffer.data);
-    if (!v.ok) return (err("Failed to create VAO."));
-
-
-
-
-
-
-    const v2 = createVertexArray(gl, program.data, {
-        in_pos: {
-            size: 3,
-            type: gl.FLOAT,
-            stride: 24,
-            offset: 0,
-            buffer: cubeBuffer.data
-        },
-        in_normal: {
-            size: 3,
-            type: gl.FLOAT,
-            stride: 24,
-            offset: 12,
-            buffer: cubeBuffer.data
+            buffer: deindexedCubeBuffer.data
         },
         transform: {
             size: 4,
@@ -255,9 +189,10 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
         gl, 
         transformFeedbackTestBuffer.data, 
         gl.TRANSFORM_FEEDBACK_BUFFER, 
-        lSystemInstanceCount * 36 * 6,
+        lSystemInstanceCount * 36 * (6) * 4,
         gl.DYNAMIC_DRAW
     );
+    console.log(lSystemInstanceBuffer, lSystemInstanceCount);
     //bindBuffer(gl, gl.ARRAY_BUFFER, null);
     console.log("matrices", matrices);
 
@@ -271,15 +206,15 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
         gl.TRANSFORM_FEEDBACK_BUFFER,
         gl.BUFFER_SIZE
     ));
-    bindProgram(gl, program.data);
+    bindProgram(gl, genProgram.data);
     bindVertexArray(gl, v2.data);
-    setUniforms(gl, program.data, {
+    setUniforms(gl, genProgram.data, {
         vp: [...mat4.create()] as Matrix4
     });
     
     console.log("array buffer size", gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE));
     gl.beginTransformFeedback(gl.TRIANGLES);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 24, lSystemInstanceCount);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, lSystemInstanceCount);
     gl.endTransformFeedback();
     bindTransformFeedback(gl, null);
 
@@ -290,13 +225,51 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
         null);
     bindBuffer(gl, gl.ARRAY_BUFFER, transformFeedbackTestBuffer.data);
 
-    const testTFBuffer = new Float32Array(12 * 36 * lSystemInstanceCount);
-    gl.getBufferSubData(gl.ARRAY_BUFFER, 0, testTFBuffer, 0, 1 * 36 * lSystemInstanceCount);
-    console.log(testTFBuffer);
+    //const testTFBuffer = new Float32Array(12 * 36 * lSystemInstanceCount);
+    //gl.getBufferSubData(gl.ARRAY_BUFFER, 0, testTFBuffer, 0, 6 * 24 * lSystemInstanceCount);
+    //console.log(testTFBuffer);
+
+    const identityMatrixBuffer = createBufferWithData(
+        gl,
+        new Float32Array(mat4.create()),
+        gl.STATIC_DRAW,
+        gl.ARRAY_BUFFER
+    );
+    if (!identityMatrixBuffer.ok) return err("Failed to create identity matrix buffer.");
+
+
+    const v = createVertexArray(gl, dispProgram.data, {
+        in_pos: {
+            size: 3,
+            type: gl.FLOAT,
+            stride: 24,
+            offset: 0,
+            buffer: transformFeedbackTestBuffer.data
+        },
+        in_normal: {
+            size: 3,
+            type: gl.FLOAT,
+            stride: 24,
+            offset: 12,
+            buffer: transformFeedbackTestBuffer.data
+        },
+        transform: {
+            size: 4,
+            type: gl.FLOAT,
+            stride: 64,
+            offset: 0,
+            buffer: identityMatrixBuffer.data,
+            divisor: 1,
+            slots: 4
+        }
+    });
+    if (!v.ok) return (err("Failed to create VAO."));
+
+
 
     return ok({
         gl,
-        program: program.data,
+        program: dispProgram.data,
         squareBuffer: buf.data,
         vao: v.data,
         lSystemMatrixBuffer: lSystemInstanceBuffer.data,
