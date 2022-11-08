@@ -59,7 +59,7 @@ export function MainCanvas() {
                     mat4.create(),
                     mat4.mul(
                         mat4.create(),
-                        mat4.perspective(mat4.create(), 2, window.innerWidth / window.innerHeight, 0.1, 1000),
+                        mat4.perspective(mat4.create(), 1.5, window.innerWidth / window.innerHeight, 0.1, 1000),
                         currentRotation
                     ),
                     mat4.translate(mat4.create(), mat4.create(), positionRef.current)

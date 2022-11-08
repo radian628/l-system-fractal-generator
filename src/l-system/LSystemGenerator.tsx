@@ -1,8 +1,8 @@
-import { mat4 } from "gl-matrix";
+import { mat4, vec3 } from "gl-matrix";
 import { err, ok, Result } from "../webgl-helpers/Common";
 
 export type LSystemApplication<T> = {
-    executions: Map<T, (m: mat4) => mat4>;
+    executions: Map<T, (m: mat4, draw: (m: mat4, v: vec3) => void) => mat4>;
 }
 
 export type LSystemSpecification<T> = {
@@ -11,14 +11,30 @@ export type LSystemSpecification<T> = {
     axiom: T[]
 }
 
-export function applyLSystem<T>(application: LSystemApplication<T>, code: T[]) {
+export type LSystemAppResult = {
+    transformations: mat4[],
+    composedTransformation: mat4
+}
+
+export function applyLSystem<T>(application: LSystemApplication<T>, code: T[]): LSystemAppResult {
     let matrix = mat4.create();
-    const transformations = [mat4.create()] as mat4[];
-    for (let instruction of code) {
-        matrix = application.executions.get(instruction)?.(mat4.clone(matrix)) ?? matrix;
-        transformations.push(matrix);
+    const transformations = [] as mat4[];
+    const draw = (m4: mat4, v3: vec3) => {
+        transformations.push(
+            mat4.translate(mat4.clone(m4), m4, 
+            vec3.mul(vec3.clone(v3), v3, vec3.fromValues(0.5, 0.5, 0.5)))
+        );
+        mat4.translate(m4, m4, v3);
     }
-    return transformations;
+    for (let instruction of code) {
+        matrix = application.executions.get(instruction)?.(mat4.clone(matrix), draw) ?? matrix;
+        //transformations.push(matrix);
+    }
+    console.log(transformations);
+    return {
+        transformations,
+        composedTransformation: matrix
+    };
 }
 
 export function mapLSystemApplication<T, U>(
@@ -84,4 +100,50 @@ export function iterateLSystem(spec: LSystemSpecification<number>, iterations: n
         arr = arr.map(e => spec.substitutions.get(e) ?? e).flat();
     }
     return arr;
+}
+
+export type OptAndApplyLSystemResult = {
+    alphabetResults: Map<number, LSystemAppResult>
+    totalResult: number[],
+    alphabetTransformationLists: Map<number, mat4[]>
+};
+
+export function optimizeAndApplyLSystem(
+    spec: LSystemSpecification<string>, 
+    rules: LSystemApplication<string>,
+    iterations: number
+): Result<OptAndApplyLSystemResult, string> {
+    const optLSystem = optimizeLSystemSpec(spec);
+    if (!optLSystem.ok) return optLSystem;
+    const optRules = mapLSystemApplication(rules, optLSystem.data.map);
+    if (!optRules.ok) return optRules;
+
+    const alphabetResults = new Map<number, LSystemAppResult>();
+    const alphabetTransformationLists = new Map<number, mat4[]>();
+    for (const num of optLSystem.data.spec.alphabet) {
+        alphabetTransformationLists.set(num, []);
+        alphabetResults.set(num, applyLSystem<number>(optRules.data, iterateLSystem(
+            {
+                ...optLSystem.data.spec,
+                axiom: [num]
+            },
+            iterations
+        )));
+    }
+
+    const totalResult = iterateLSystem(optLSystem.data.spec, iterations);
+
+    const m = mat4.create();
+
+    for (const result of totalResult) {
+        const tlist = alphabetTransformationLists.get(result);
+        tlist?.push(mat4.clone(m));
+        mat4.mul(m, m, alphabetResults.get(result)?.composedTransformation ?? mat4.create());
+    }
+
+    return ok({
+        alphabetResults,
+        totalResult,
+        alphabetTransformationLists
+    });
 }

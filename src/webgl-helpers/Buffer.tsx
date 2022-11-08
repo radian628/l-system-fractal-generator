@@ -1,10 +1,25 @@
 import { Result, resultify } from "./Common";
 
-const bufferBindings = new Map<number, WebGLBuffer>();
-export function bindBuffer(gl: WebGL2RenderingContext, target: number, buffer: WebGLBuffer, force?: boolean) {
+export const bufferBindings = new Map<number, WebGLBuffer | null>();
+export function bindBuffer(gl: WebGL2RenderingContext, target: number, buffer: WebGLBuffer | null, force?: boolean) {
   if (bufferBindings.get(target) !== buffer || force) {
     gl.bindBuffer(target, buffer);
     bufferBindings.set(target, buffer);
+  }
+}
+
+export const bufferBaseBindings = new Map<number, Map<number, WebGLBuffer | null>>();
+export function bindBufferBase(gl: WebGL2RenderingContext, target: number, index: number, buffer: WebGLBuffer | null, force?: boolean) {
+  const targetBindings = bufferBaseBindings.get(target);
+  if (targetBindings?.get(target) !== buffer || force) {
+    gl.bindBufferBase(target, index, buffer);
+    if (targetBindings) {
+      targetBindings.set(index, buffer);
+    } else {
+      const newTargetBindings = new Map<number, WebGLBuffer | null>();
+      newTargetBindings.set(index, buffer);
+      bufferBaseBindings.set(target, newTargetBindings);
+    }
   }
 }
 
@@ -12,9 +27,13 @@ export function createBuffer(gl: WebGL2RenderingContext): Result<WebGLBuffer, st
   return resultify(gl.createBuffer(), "Failed to create buffer");
 }
 
-export function bufferData(gl: WebGL2RenderingContext, buffer: WebGLBuffer, target: number, data: BufferSource, usage: number) {
+export function bufferData(gl: WebGL2RenderingContext, buffer: WebGLBuffer, target: number, data: BufferSource | number, usage: number) {
   //console.log(target);
   bindBuffer(gl, target, buffer);
+  if (typeof data == "number") {
+    gl.bufferData(target, data, usage);
+    return;
+  }
   gl.bufferData(target, data, usage);
 }
 

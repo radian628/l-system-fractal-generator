@@ -1,14 +1,18 @@
 import { err, ok, Result } from "./Common";
+import { bindTransformFeedback } from "./TransformFeedback";
 
-let programBinding: WebGLProgram;
+export let programBinding: WebGLProgram;
 export function bindProgram(gl: WebGL2RenderingContext, program: WebGLProgram) {
   if (programBinding !== program) {
     gl.useProgram(program);
     programBinding = program;
   }
 }
+export function setProgramBinding(binding: WebGLProgram) {
+  programBinding = binding;
+}
 
-let shaderCache = new Map<string, WebGLShader>();
+export let shaderCache = new Map<string, WebGLShader>();
 
 export function getShader(gl: WebGL2RenderingContext, type: number, source: string): Result<WebGLShader, string> {
   const cachedShader = shaderCache.get(source);
@@ -28,11 +32,30 @@ export function getShader(gl: WebGL2RenderingContext, type: number, source: stri
   }
 }
 
-export function getProgram(gl: WebGL2RenderingContext, vshader: WebGLShader, fshader: WebGLShader): Result<WebGLProgram, string> {
+type TransformFeedbackVaryingsOptions = {
+  varyings: string[],
+  bufferMode: number,
+  tf: WebGLTransformFeedback
+};
+
+export function getProgram(
+  gl: WebGL2RenderingContext, 
+  vshader: WebGLShader, 
+  fshader: WebGLShader,
+  transformFeedbackVaryings?: TransformFeedbackVaryingsOptions
+): Result<WebGLProgram, string> {
   const program = gl.createProgram();
   if (!program) return err("Failed to create program.");
   gl.attachShader(program, vshader);
   gl.attachShader(program, fshader);
+  if (transformFeedbackVaryings) {
+    bindTransformFeedback(gl, transformFeedbackVaryings.tf);
+    gl.transformFeedbackVaryings(
+      program, 
+      transformFeedbackVaryings.varyings,
+      transformFeedbackVaryings.bufferMode
+    );
+  }
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     return err("Program linker error: \n" + gl.getProgramInfoLog(program));
@@ -40,12 +63,17 @@ export function getProgram(gl: WebGL2RenderingContext, vshader: WebGLShader, fsh
   return ok(program);
 }
 
-export function getProgramFromStrings(gl: WebGL2RenderingContext, vsource: string, fsource: string): Result<WebGLProgram, string> {
+export function getProgramFromStrings(
+  gl: WebGL2RenderingContext, 
+  vsource: string, 
+  fsource: string,
+  transformFeedbackVaryings?: TransformFeedbackVaryingsOptions
+): Result<WebGLProgram, string> {
   const vshader = getShader(gl, gl.VERTEX_SHADER, vsource);
   const fshader = getShader(gl, gl.FRAGMENT_SHADER, fsource);
   if (!vshader.ok) return vshader;
   if (!fshader.ok) return fshader;
-  return getProgram(gl, vshader.data, fshader.data);
+  return getProgram(gl, vshader.data, fshader.data, transformFeedbackVaryings);
 }
 
 type ComponentCount = "1" | "2" | "3" | "4";

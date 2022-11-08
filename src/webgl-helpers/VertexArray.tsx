@@ -4,12 +4,15 @@ import { bindBuffer } from "./Buffer";
 import { err, ok, Result } from "./Common";
 import { bindProgram } from "./Shader";
 
-let vertexArrayBinding: WebGLVertexArrayObject;
-export function bindVertexArray(gl: WebGL2RenderingContext, vertexArray: WebGLVertexArrayObject) {
+export let vertexArrayBinding: WebGLVertexArrayObject | null;
+export function bindVertexArray(gl: WebGL2RenderingContext, vertexArray: WebGLVertexArrayObject | null) {
   if (vertexArrayBinding !== vertexArray) {
     gl.bindVertexArray(vertexArray);
     vertexArrayBinding = vertexArray;
   }
+}
+export function setVertexArrayBinding(binding: WebGLVertexArrayObject) {
+  vertexArrayBinding = binding;
 }
 
 export function createVertexArray(gl: WebGL2RenderingContext, program: WebGLProgram, attribs: {
