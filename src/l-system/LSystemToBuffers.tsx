@@ -1,9 +1,9 @@
 import { mat4 } from "gl-matrix";
 import { bindBufferBase, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
-import { err } from "../webgl-helpers/Common";
+import { err, ok, Result } from "../webgl-helpers/Common";
 import { bindProgram, Matrix4, setUniforms } from "../webgl-helpers/Shader";
 import { bindTransformFeedback } from "../webgl-helpers/TransformFeedback";
-import { addDataToVertexArray, bindVertexArray } from "../webgl-helpers/VertexArray";
+import { addDataToVertexArray, bindVertexArray, createVertexArray } from "../webgl-helpers/VertexArray";
 import { LSystemApplication, LSystemSpecification, optimizeAndApplyLSystem } from "./LSystemGenerator";
 
 export type LSystemBufferData = {
@@ -15,7 +15,9 @@ export type LSystemBufferData = {
 
         // actual mesh corresponding to given letter of the L-system alphabet
         submesh: WebGLBuffer,
-        submeshSize: number
+        submeshSize: number,
+
+        vao: WebGLVertexArrayObject
     }>;
 }
 
@@ -23,14 +25,16 @@ export function LSystemToBuffers(
     gl: WebGL2RenderingContext,
     glState: {
         meshGenProgram: WebGLProgram,
+        meshDisplayProgram: WebGLProgram,
         cubeBuffer: WebGLBuffer,
         tf: WebGLTransformFeedback
     },
     spec: LSystemSpecification<string>,
     code: LSystemApplication<string>,
-    iterations: number
-) {
-    const app = optimizeAndApplyLSystem(spec, code, iterations);
+    mainIterations: number,
+    subtreeIterations: number
+): Result<LSystemBufferData, string> {
+    const app = optimizeAndApplyLSystem(spec, code, mainIterations, subtreeIterations);
     if (!app.ok) return app;
 
     const bufferData: LSystemBufferData = {
@@ -122,12 +126,60 @@ export function LSystemToBuffers(
             ), gl.STATIC_DRAW);
         if (!instances.ok) return instances;
 
+        const outputVao = createVertexArray(
+            gl,
+            glState.meshDisplayProgram,
+            {
+                in_pos: {
+                    size: 3,
+                    type: gl.FLOAT,
+                    stride: 24,
+                    offset: 0,
+                    buffer: outputVertexBuffer.data
+                },
+                in_normal: {
+                    size: 3,
+                    type: gl.FLOAT,
+                    stride: 24,
+                    offset: 12,
+                    buffer: outputVertexBuffer.data
+                },
+                transform: {
+                    size: 4,
+                    type: gl.FLOAT,
+                    stride: 64,
+                    offset: 0,
+                    buffer: instances.data,
+                    divisor: 1,
+                    slots: 4
+                }
+            }
+        );
+        if (!outputVao.ok) return err("Failed to create output VAO.");
+
         bufferData.map.set(token, {
             instanceCount: app.data.alphabetTransformationLists.get(token)?.length ?? 0,
             instances: instances.data,
 
             submesh: outputVertexBuffer.data,
-            submeshSize: matrices.length * 36 * 6 * 4
+            submeshSize: matrices.length * 36,
+
+            vao: outputVao.data
         });
+    }
+
+    return ok(bufferData);
+}
+
+
+
+export function drawLSystemToBuffers(gl: WebGL2RenderingContext, displayProgram: WebGLProgram, vp: Matrix4, lsbd: LSystemBufferData) {
+    for (const data of lsbd.map.values()) {
+        bindVertexArray(gl, data.vao);
+        bindProgram(gl, displayProgram);
+        setUniforms(gl, displayProgram, {
+            vp
+        });
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, data.submeshSize, data.instanceCount);
     }
 }

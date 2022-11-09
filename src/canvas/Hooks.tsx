@@ -7,12 +7,13 @@ import DISP_FRAG_SHADER from "./l-system-display.frag?raw";
 import { bindProgram, getProgramFromStrings, Matrix4, setUniforms } from "../webgl-helpers/Shader";
 import { bindBuffer, bindBufferBase, bufferData, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
 import { bindVertexArray, createVertexArray } from "../webgl-helpers/VertexArray";
-import { applyLSystem, iterateLSystem, mapLSystemApplication, optimizeAndApplyLSystem, optimizeLSystemSpec } from "../l-system/LSystemGenerator";
+import { applyLSystem, iterateLSystem, LSystemApplication, mapLSystemApplication, optimizeAndApplyLSystem, optimizeLSystemSpec } from "../l-system/LSystemGenerator";
 import { mat4, vec3 } from "gl-matrix";
 import { bindTransformFeedback } from "../webgl-helpers/TransformFeedback";
 import { transform } from "typescript";
 import { cubeIndices, cubeVertices } from "./VertexData";
 import { deindex } from "../webgl-helpers/WebGLUtils";
+import { LSystemBufferData, LSystemToBuffers } from "../l-system/LSystemToBuffers";
 
 export function useUpToDate<T>(state: T) {
     const ref = useRef<T>(state);
@@ -55,7 +56,9 @@ type WebGLState = {
     transformFeedbackTestBuffer: WebGLBuffer,
 
     cubeBuffer: WebGLBuffer,
-    cubeIndexBuffer: WebGLBuffer
+    cubeIndexBuffer: WebGLBuffer,
+
+    lSystemBufferData: LSystemBufferData
 }
 
 
@@ -96,16 +99,15 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
     const scalevec2 = vec3.fromValues(1/sf, 1/sf, 1/sf);
     const angle1 = 2.3999632297286533;
     const angle2 = Math.PI / 6;
-    const app = optimizeAndApplyLSystem(
-        {
-            axiom: ["0"],
-            substitutions: new Map([
-                ["1", "1".split("")],
-                ["0", "1[0]0B".split("")]
-            ]),
-            alphabet: "01[]B".split("")
-        },
-        {
+    const lSystemSpec = {
+        axiom: ["0"],
+        substitutions: new Map([
+            ["1", "1".split("")],
+            ["0", "1[0]0B".split("")]
+        ]),
+        alphabet: "01[]B".split("")
+    };
+    const lSystemApp: LSystemApplication<string> = {
         executions: new Map([
             ["0", m => {
                 return m;//mat4.translate(m, m, vec3.fromValues(0, 0, 2));
@@ -135,7 +137,10 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
                 return m
             }]
         ])
-    }, 10);
+    };
+    const app = optimizeAndApplyLSystem(
+        lSystemSpec, lSystemApp
+    , 10, 10);
 
     if (!app.ok) return err("L-system failed.");
 
@@ -265,7 +270,20 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
     });
     if (!v.ok) return (err("Failed to create VAO."));
 
-
+    const lsbd = LSystemToBuffers(
+        gl,
+        {
+            meshGenProgram: genProgram.data,
+            meshDisplayProgram: dispProgram.data,
+            cubeBuffer: deindexedCubeBuffer.data,
+            tf
+        },
+        lSystemSpec,
+        lSystemApp,
+        8,
+        8
+    );
+    if (!lsbd.ok) return err("Failed to convert L system to buffers.");
 
     return ok({
         gl,
@@ -278,7 +296,9 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
         transformFeedbackTestBuffer: transformFeedbackTestBuffer.data,
 
         cubeBuffer: cubeBuffer.data,
-        cubeIndexBuffer: cubeIndexBuffer.data
+        cubeIndexBuffer: cubeIndexBuffer.data,
+
+        lSystemBufferData: lsbd.data
     });
 }
 

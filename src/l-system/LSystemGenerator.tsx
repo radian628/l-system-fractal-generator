@@ -111,7 +111,8 @@ export type OptAndApplyLSystemResult = {
 export function optimizeAndApplyLSystem(
     spec: LSystemSpecification<string>, 
     rules: LSystemApplication<string>,
-    iterations: number
+    mainIterations: number,
+    subtreeIterations: number
 ): Result<OptAndApplyLSystemResult, string> {
     const optLSystem = optimizeLSystemSpec(spec);
     if (!optLSystem.ok) return optLSystem;
@@ -127,11 +128,11 @@ export function optimizeAndApplyLSystem(
                 ...optLSystem.data.spec,
                 axiom: [num]
             },
-            iterations
+            subtreeIterations
         )));
     }
 
-    const totalResult = iterateLSystem(optLSystem.data.spec, iterations);
+    const totalResult = iterateLSystem(optLSystem.data.spec, mainIterations);
 
     const m = mat4.create();
 

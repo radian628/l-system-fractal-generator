@@ -5,6 +5,7 @@ import { bindVertexArray, createVertexArray } from "../webgl-helpers/VertexArray
 import { useAnimationFrame, useWebGLState } from "./Hooks";
 import { mat4, vec3 } from "gl-matrix";
 import { useInput } from "./Input";
+import { drawLSystemToBuffers } from "../l-system/LSystemToBuffers";
 
 
 
@@ -51,21 +52,21 @@ export function MainCanvas() {
         gl.viewport(0, 0, window.innerWidth, window.innerHeight);
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        bindVertexArray(gl, gls.vao);
-        setUniforms(gl, gls.program, {
-            vp: 
-                Array.from(mat4.mul(    
-                    mat4.create(),
-                    mat4.mul(
-                        mat4.create(),
-                        mat4.perspective(mat4.create(), 1.5, window.innerWidth / window.innerHeight, 0.1, 1000),
-                        currentRotation
-                    ),
-                    mat4.translate(mat4.create(), mat4.create(), positionRef.current)
-                ).map(e => e)) as Matrix4
-
-        });
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, 36 * gls.lSystemInstanceCount, 1);
+        const vp = Array.from(mat4.mul(    
+            mat4.create(),
+            mat4.mul(
+                mat4.create(),
+                mat4.perspective(mat4.create(), 1.5, window.innerWidth / window.innerHeight, 0.1, 1000),
+                currentRotation
+            ),
+            mat4.translate(mat4.create(), mat4.create(), positionRef.current)
+        ).map(e => e)) as Matrix4;
+        drawLSystemToBuffers(gl, gls.program, vp, gls.lSystemBufferData);
+        // bindVertexArray(gl, gls.vao);
+        // setUniforms(gl, gls.program, {
+        //     vp
+        // });
+        // gl.drawArraysInstanced(gl.TRIANGLES, 0, 36 * gls.lSystemInstanceCount, 1);
     });
 
     if (!glState.glStatus.ok) {
