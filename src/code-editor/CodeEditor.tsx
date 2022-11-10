@@ -33,21 +33,25 @@ branch ->
 push :
   my 1,
   ry angle1,
-  s scale1;
+  s scale1
+  ;
 
 left :
-  rz angle2;
+  rz angle2
+  ;
 
 right :
   s scale2,
-  rz -1*angle2*1.4;
+  rz -1*angle2*1.4
+  ;
 
 pop :
   rz angle2*0.4,
   s 1/scale1,
   ry -1*angle1,
   s 1/scale2,
-  dy -1;
+  dy -1
+  ;
 
 ^ branch;`;
 export function initCodeEditor(parent: HTMLElement,
