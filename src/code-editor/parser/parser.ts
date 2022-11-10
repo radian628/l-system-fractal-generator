@@ -2,15 +2,15 @@
 import {LRParser} from "@lezer/lr"
 export const parser = LRParser.deserialize({
   version: 14,
-  states: "'hQYQPOOObQPO'#C`OmQPO'#C_OrQPO'#CdOzQPO'#ChOOQO'#Cp'#CpOOQO'#Ci'#CiQYQPOOO!PQPO,58yOzQPO,59OO![QPO,59QOOQO'#Ce'#CeOOQO,59S,59SOOQO-E6g-E6gOOQO'#C`'#C`O!aQQO1G.eO!PQPO'#CcOOQO'#Cs'#CsOOQO'#Cj'#CjO!rQPO1G.jOOQO'#Cg'#CgO!zQPO1G.lO![QPO1G.lO!PQPO,58|O!PQPO,58|OOQO7+$P7+$PO#]QQO,58}OOQO-E6h-E6hOOQO7+$U7+$UO#nQQO'#ClO$]QPO7+$WO$nQPO7+$WOOQO7+$W7+$WO$vQPO7+$WOOQO-E6i-E6iOOQO1G.h1G.hO%XQQO1G.hOOQO1G.i1G.iOOQO-E6j-E6jO%|QPO<<GrOOQO<<Gr<<GrO&UQPO<<GrO&gQPO<<GrP&oQPO'#CkOOQOAN=^AN=^O&}QPOAN=^P'VQPO,59VPOQO,59V,59VOOQOG22xG22xPOQO1G.q1G.q",
-  stateData: "'h~OcOSPOS~OePOsSO~OfSXoXXpXX~OfWO~OoXOpYO~OeZO~OTaOe^Ol`O~OedO~OhgOigOjhOkhOniO~OeZOnlO~OTaOe^Ol`OqoOrpO~OhgOigOjhOkhOmuO~OhgOigOjhOkhOT`Xe`Xl`Xq`Xr`X~OTaOe^Ol`OqwOrxO~OrxOe_a~OTaOe^Ol`OqzOrxO~OhgOigOjUikUinUimUiTUieUilUiqUirUi~Or|Oe_i~OTaOe^Ol`Oq}Or|O~Or|Oe_a~OTaOe^Ol`Oq!PO~Or!QOe_i~OTaOe^Ol`Oq!RO~Okk~",
-  goto: "#jhPPPimPqqi}i!Yi!`!f!l!rPPP#QPP#UTTOVSQOVeaW`eghnqy{!OSROVQ[STbXcQeYRqfQVOR]VQcXRkcQfYRrfQneUvny!OQyqR!O{TUOVQ_WQj`[menqy{!OQsgRth",
-  nodeNames: "⚠ LineComment Program Constant Variable Number Operation Parenthesized Replacement Symbol Command CommandName Start",
-  maxTerm: 35,
+  states: "'nQYQPOOObQPO'#C`OmQPO'#C_OrQPO'#ChOwQPO'#CkO|QPO'#CoOOQO'#Cw'#CwOOQO'#Cp'#CpQYQPOOO!RQPO,58yO|QPO,59SO!^QPO,59VOOQO'#Cj'#CjOOQO'#Cq'#CqO!cQPO,59ZOOQO-E6n-E6nOOQO'#C`'#C`O!kQQO1G.eO!RQPO'#CeOOQO'#Ca'#CaO!|QPO1G.nOOQO'#Cm'#CmO#UQPO'#ClO#gQPO1G.qO!^QPO1G.qOOQO-E6o-E6oOOQO1G.u1G.uOOQO'#Cc'#CcOOQO'#Cd'#CdO!RQPO,58|O!RQPO,58|OOQO7+$P7+$PO#oQQO'#CfO$QQPO,59POOQO7+$Y7+$YO$VQQO'#CnOOQO'#Cs'#CsO$tQPO,59WO%VQPO7+$]OOQO7+$]7+$]O%_QPO7+$]OOQO-E6p-E6pOOQO1G.h1G.hO%gQQO1G.hOOQO1G.k1G.kOOQO-E6q-E6qOOQO<<Gw<<GwO&XQPO<<GwP&aQPO'#CrOOQOAN=cAN=cPOQO,59^,59^",
+  stateData: "&i~OjOSPOS~OlPOxTO~OmSXu]Xv^X~OmXO~OuYO~OvZO~Ol[O~OZcOl`OrbO~OleO~Ol[OtjO~OnkOokOplOqlOtoO~Ol[OtrO~OZcOl`OrbOt`Xw`X~OtwOwvO~OnkOokOplOqlOsYX~Os|O~OnkOokOplOqlOZbXlbXrbXtbXwbX~OZcOl`OrbOt`aw`a~Ot!OOlfa~Ot!OOw!PO~OnkOokOpUiqUitUisUiZUilUirUiwUi~Ot!ROlfa~Ow!SO~Oqq~",
+  goto: "#{lPPPmq}u!_!eu!jPm!m!qm!{#R#Vm#Z#a#k#qPPP#wTUOWSQOW]cXbfmnuQaXQpbSsfuQzmR{nXmaps{VnapsRqbTROWSSOWX]TY^dQgZRxhTfZhTtfuQWOR_WQ^TQdYTi^dQhZRyhQufR}uTVOW",
+  nodeNames: "⚠ LineComment Program Constant Variable Expression Operation Op Op Parenthesized Operand Number Replacement LSymbol Symbol Command Instruction CommandName InstructionArg Start",
+  maxTerm: 40,
   skippedNodes: [0,1],
   repeatNodeCount: 4,
-  tokenData: "%y~ReXY!dYZ!d]^!dpq!dxy!uyz!zz{#P{|#U|}#Z}!O#`!O!P#n!P!Q$^!Q![#|!]!^$}!_!`%S!c!}%X#Q#R%j#R#S%X#T#o%X#o#p%o#q#r%t~!iSc~XY!dYZ!d]^!dpq!d~!zOl~~#POm~~#UOh~~#ZOj~~#`Oq~~#eRkQ!O!P#n!Q![#|!`!a$X~#qP!Q![#t~#yPT~!Q![#t~$RQT~!O!P#t!Q![#|P$^OoP~$cPi~!P!Q$f~$kSP~OY$fZ;'S$f;'S;=`$w<%lO$f~$zP;=`<%l$f~%SOn~~%XOf~~%^Se~!Q![%X!c!}%X#R#S%X#T#o%X~%oOs~~%tOp~~%yOr~",
+  tokenData: "%q~RdXY!aYZ!a]^!apq!axy!ryz!wz{!|{|#R|}#W}!O#]!O!P#k!P!Q$Z!Q![#y![!]$z!]!^%P!_!`%U!c!}%Z#Q#R%l#R#S%Z#T#o%Z~!fSj~XY!aYZ!a]^!apq!a~!wOr~~!|Os~~#ROn~~#WOp~~#]Ow~~#bRqQ!O!P#k!Q![#y!`!a$U~#nP!Q![#q~#vPZ~!Q![#q~$OQZ~!O!P#q!Q![#yP$ZOuP~$`Po~!P!Q$c~$hSP~OY$cZ;'S$c;'S;=`$t<%lO$c~$wP;=`<%l$c~%POv~~%UOt~~%ZOm~~%`Sl~!Q![%Z!c!}%Z#R#S%Z#T#o%Z~%qOx~",
   tokenizers: [0, 1],
   topRules: {"Program":[0,2]},
-  tokenPrec: 297
+  tokenPrec: 252
 })

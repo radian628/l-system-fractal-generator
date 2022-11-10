@@ -13,10 +13,9 @@ import {styleTags, tags as t} from "@lezer/highlight"
 import {LRLanguage, LanguageSupport} from "@codemirror/language"
 
 import "./CodeEditor.css";
-
-export function initCodeEditor() {
-    const code = `
-angle1 = 45;
+import { compile } from "./Compiler";
+export const sampleCode = `
+angle1 = 30+15;
 angle2 = 30;
 
 branch -> 
@@ -27,41 +26,40 @@ branch ->
   branch
   pop;
 
-push {
+push :
   my 1,
   ry angle1,
-  s 0.8
-}
+  s 0.8;
 
-left {
-  rz angle2
-}
+left :
+  rz angle2;
 
-right {
-  rz -angle2
-}
+right :
+  rz -1*angle2;
 
-pop {
+pop :
   rz angle2,
   s 1.25,
-  ry -angle1,
-  dy -1
-}
+  ry -1*angle1,
+  dy -1;
 
-^ branch`;
-    const tree = parser.parse(code);
+^ branch;`;
+export function initCodeEditor() {
+
+    console.log(compile(sampleCode));
     // console.log(tree);
     // console.log(tree.topNode);
     // console.log(tree.type);
-    console.log(tree.topNode.getChildren("Replacement"));
-    console.log(tree.topNode.getChildren("Command"));
-    console.log(tree.topNode.getChildren("Start"));
-    console.log(tree.topNode.getChildren("Constant"));
+    // console.log(tree.topNode.getChildren("Replacement"));
+    // console.log(tree.topNode.getChildren("Command"));
+    // console.log(tree.topNode.getChildren("Start"));
+    // console.log(tree.topNode.getChildren("Constant"));
 
     let parserWithMetadata = parser.configure({
         props: [
             styleTags({
                 Symbol: t.string,
+                LSymbol: t.string,
                 Variable: t.variableName,
                 CommandName: t.keyword,
                 Number: t.number,
@@ -86,7 +84,7 @@ pop {
     })
 
     let startState = EditorState.create({
-    doc: code,
+    doc: sampleCode,
     extensions: [
         keymap.of(defaultKeymap), 
         basicSetup, 

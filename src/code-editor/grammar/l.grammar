@@ -4,33 +4,44 @@
 
 statement {
     Constant {
-        Variable "=" expression ";"
+        Variable "=" Expression ";"
     } |
     Replacement {
-        Symbol "->" Symbol+ ";"
+        LSymbol "->" Symbol+ ";"
     } |
     Command {
-        Symbol "{" 
-            ( CommandName expression* "," )* CommandName expression* ","? 
-        "}"
+        Symbol ":" 
+            ( Instruction "," )* Instruction ","? 
+        ";"
     } |
     Start {
-        "^" Symbol
+        "^" Symbol+ ";"
     }
 }
 
-expression {
-    Variable |
-    Number |
-    Operation {
-        expression !times ("*" | "/") expression |
-        expression !plus ("+" | "-") expression
-    } |
+
+Instruction { CommandName InstructionArg* }
+
+InstructionArg { Expression }
+
+Expression {
+    Operation |
     Parenthesized {
-        "(" expression ")"
-    }
+        ("(" Operand ")")
+    } |
+    Variable |
+    Number 
 }
 
+
+Operation {
+    (Expression !times Op { "*" | "/" } Expression) |
+    (Expression !plus Op { "+" | "-" } Expression)
+}
+
+Operand { Expression }
+
+LSymbol { identifier }
 Symbol { identifier }
 Variable { identifier }
 CommandName { identifier }

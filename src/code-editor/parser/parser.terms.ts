@@ -3,6 +3,12 @@ export const
   LineComment = 1,
   Program = 2,
   Variable = 4,
-  Number = 5,
-  Symbol = 9,
-  CommandName = 11
+  Expression = 5,
+  Operation = 6,
+  Operand = 10,
+  Number = 11,
+  LSymbol = 13,
+  Symbol = 14,
+  Instruction = 16,
+  CommandName = 17,
+  InstructionArg = 18

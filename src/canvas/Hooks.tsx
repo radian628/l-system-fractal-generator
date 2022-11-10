@@ -14,6 +14,8 @@ import { transform } from "typescript";
 import { cubeIndices, cubeVertices } from "./VertexData";
 import { deindex } from "../webgl-helpers/WebGLUtils";
 import { LSystemBufferData, LSystemToBuffers } from "../l-system/LSystemToBuffers";
+import { compile } from "../code-editor/Compiler";
+import { sampleCode } from "../code-editor/CodeEditor";
 
 export function useUpToDate<T>(state: T) {
     const ref = useRef<T>(state);
@@ -138,9 +140,13 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
             }]
         ])
     };
+
+    const compiledLSys = compile(sampleCode);
+    if (!compiledLSys.ok) return err(JSON.stringify(compiledLSys.data));
+
     const app = optimizeAndApplyLSystem(
-        lSystemSpec, lSystemApp
-    , 10, 10);
+        compiledLSys.data.spec, compiledLSys.data.app
+    , 5, 5);
 
     if (!app.ok) return err("L-system failed.");
 
@@ -280,8 +286,8 @@ function createWebGLState(gl: WebGL2RenderingContext): Result<WebGLState, string
         },
         lSystemSpec,
         lSystemApp,
-        8,
-        8
+        5,
+        5
     );
     if (!lsbd.ok) return err("Failed to convert L system to buffers.");
 
