@@ -2,15 +2,19 @@ import { createRef, useEffect, useRef } from "react";
 import { getProgramFromStrings, bindProgram, setUniforms, Matrix4 } from "../webgl-helpers/Shader";
 import { bindBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
 import { bindVertexArray, createVertexArray } from "../webgl-helpers/VertexArray";
-import { useAnimationFrame, useWebGLState } from "./Hooks";
+import { useAnimationFrame, useUpToDate, useWebGLState } from "./Hooks";
 import { mat4, vec3 } from "gl-matrix";
 import { useInput } from "./Input";
 import { drawLSystemToBuffers } from "../l-system/LSystemToBuffers";
+import { LSystemDSLCompilerOutput } from "../code-editor/Compiler";
+import React from "react";
 
 
 
-export function MainCanvas() {
-    const canvasRef = createRef<HTMLCanvasElement>();
+export function MainCanvas(props: { lSystem: LSystemDSLCompilerOutput }) {
+    const canvasRef = useRef<HTMLCanvasElement>();
+
+    const lSystemRef = useUpToDate(props.lSystem);
 
     const inputRef = useInput(canvasRef);
 
@@ -18,7 +22,9 @@ export function MainCanvas() {
 
     const positionRef = useRef(vec3.fromValues(-3.5, -3.5, -3.5))
 
-    const glState = useWebGLState(canvasRef, (time, gls) => {
+    const glState = useWebGLState(canvasRef, {
+        lSystem: props.lSystem
+    }, (time, gls) => {
         const currentRotation = 
         mat4.mul(
             mat4.create(),
@@ -69,15 +75,13 @@ export function MainCanvas() {
         // gl.drawArraysInstanced(gl.TRIANGLES, 0, 36 * gls.lSystemInstanceCount, 1);
     });
 
-    if (!glState.glStatus.ok) {
-        //console.log(glState.glStatus.data);
-        return <p>{glState.glStatus.data}</p>;
-    }
-
-    return <canvas
-        id="main-canvas"
-        ref={canvasRef}
-        width={glState.windowSize[0]}
-        height={glState.windowSize[1]}
-    ></canvas>
+    return <React.Fragment>
+        {!glState.glStatus.ok && <p>{glState.glStatus.data}</p>}
+        <canvas
+            id="main-canvas"
+            ref={elem => canvasRef.current = elem ?? undefined}
+            width={glState.windowSize[0]}
+            height={glState.windowSize[1]}
+        ></canvas>
+    </React.Fragment>
 }

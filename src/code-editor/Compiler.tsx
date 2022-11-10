@@ -75,9 +75,9 @@ export const lSystemFunctionTable: {
         argc: 4,
         aliases: ["rotate"]
     }],
-    rx: [{ fn: (m, d, a) => mat4.rotateX(m, m, a), argc: 1, aliases: ["rotatex"] }],
-    ry: [{ fn: (m, d, a) => mat4.rotateY(m, m, a), argc: 1, aliases: ["rotatey"] }],
-    rz: [{ fn: (m, d, a) => mat4.rotateZ(m, m, a), argc: 1, aliases: ["rotatez"] }],
+    rx: [{ fn: (m, d, a) => mat4.rotateX(m, m, a * Math.PI / 180), argc: 1, aliases: ["rotatex"] }],
+    ry: [{ fn: (m, d, a) => mat4.rotateY(m, m, a * Math.PI / 180), argc: 1, aliases: ["rotatey"] }],
+    rz: [{ fn: (m, d, a) => mat4.rotateZ(m, m, a * Math.PI / 180), argc: 1, aliases: ["rotatez"] }],
 
     // scale commands
     s: [
@@ -125,11 +125,6 @@ export function evaluateExpression(constants: Map<string, number>, src: string, 
         });
     }
 
-    // const cursor = root.cursor();
-    // do {
-    //     console.log("name", cursor.node.name, "str", str(cursor.node));
-    // } while (cursor.next()); 
-
     while (
         (
             root.name != "Variable"
@@ -142,8 +137,6 @@ export function evaluateExpression(constants: Map<string, number>, src: string, 
     }
 
     const strRoot = str(root);
-
-    console.log("rootname", root.name, "rootstr", str(root));
 
     switch (root.name) {
         case "Variable":
@@ -164,7 +157,6 @@ export function evaluateExpression(constants: Map<string, number>, src: string, 
             if (!erhs.ok) return erhs;
             const l = elhs.data;
             const r = erhs.data;
-            console.log("str op", str(op));
             switch (str(op)) {
                 case "+": return ok (l + r);
                 case "-": return ok (l - r);
@@ -183,8 +175,10 @@ export function evaluateExpression(constants: Map<string, number>, src: string, 
 
 }
 
+export type LSystemDSLCompilerOutput = { spec: LSystemSpecification<string>, app: LSystemApplication<string> }
+
 export function compile(src: string): Result<
-    { spec: LSystemSpecification<string>, app: LSystemApplication<string> },
+    LSystemDSLCompilerOutput,
     CompilerError[]
 > {
     const str = <T extends SyntaxNode | null>(node: T): (T extends SyntaxNode ? string : undefined) => {
@@ -238,14 +232,13 @@ export function compile(src: string): Result<
         constantMap.set(str(lhs), evalExpr.data);
     }
 
-    console.log("constant map", constantMap);
-
     const codeMap = new Map<string, 
         {
             commands: {
                 name: string,
-                operands: number[]
-            }[]
+                operands: number[],
+                node: SyntaxNode
+            }[],
         }
     >();
 
@@ -293,7 +286,8 @@ export function compile(src: string): Result<
 
         const commandInfo: {
             name: string,
-            operands: number[]
+            operands: number[],
+            node: SyntaxNode
         }[] = [];
 
         const instructions = command.getChildren("Instruction");
@@ -312,7 +306,8 @@ export function compile(src: string): Result<
             });
             commandInfo.push({
                 name: str(instructionName),
-                operands: operands.filter(t => t.ok).map(t => t.data) as number[]
+                operands: operands.filter(t => t.ok).map(t => t.data) as number[],
+                node: instruction
             });
         }
 
@@ -323,18 +318,44 @@ export function compile(src: string): Result<
 
     const alphabet = Array.from(alphabetSet);
 
-    console.log(alphabetSet, codeMap, replacementMap);
-
-    // const spec: LSystemSpecification<string> = {
-
-    // }
-
     if (starts.length > 1) {
         makeErr(starts[1], "An L-system may not have more than one start sequence.");
     }
 
+    const executions = new Map(
+        Array.from(codeMap.entries()).map(([k, v]) => {
+            const drawInstructions: {
+                mat: mat4,
+                inv: mat4,
+                v: vec3
+            }[] = [];
+            const matrix = mat4.create();
+            for (let instr of v.commands) {
+                const fnWithOverloads = lSystemFunctionTable[instr.name];
+                if (!fnWithOverloads) {
+                    makeErr(instr.node, `Function '${instr.name}' does not exist.`);
+                    continue;
+                }
+                const codeToRun = fnWithOverloads.find(overload => overload.argc == instr.operands.length);
+                if (!codeToRun) {
+                    makeErr(instr.node, `No variant of function '${instr.name}' takes ${instr.operands.length} operands. Variants exist with the following number of operands: ${fnWithOverloads.map(o => o.argc).join(", ")}`);
+                    continue;
+                }
+                codeToRun.fn?.
+                    (matrix, (m, v) => drawInstructions.push({ v, mat: mat4.clone(m), inv: mat4.invert(mat4.create(), m)}), ...instr.operands);
+            }
+            return [k, (m: mat4, draw: (m: mat4, v: vec3) => void) => {
+                for (const instr of drawInstructions) {
+                    mat4.multiply(m, m, instr.mat);
+                    draw(m, instr.v);
+                    mat4.multiply(m, m, instr.inv);
+                }
+                mat4.multiply(m, m, matrix);
+                return m;
+            }];
+        }));
+
     if (errors.length > 0) {
-        console.log(errors);
         return err(errors);
     } else {
         return ok({
@@ -344,28 +365,7 @@ export function compile(src: string): Result<
                 axiom: starts[0].getChildren("Symbol").map(s => str(s as SyntaxNode))
             },
             app: {
-                executions: new Map(
-                    Array.from(codeMap.entries()).map(([k, v]) => {
-                        const drawInstructions: {
-                            mat: mat4,
-                            inv: mat4,
-                            v: vec3
-                        }[] = [];
-                        const matrix = mat4.create();
-                        for (let instr of v.commands) {
-                            lSystemFunctionTable[instr.name][0]?.fn
-                                (matrix, (m, v) => drawInstructions.push({ v, mat: mat4.clone(m), inv: mat4.invert(mat4.create(), m)}), ...instr.operands);
-                        }
-                        return [k, (m: mat4, draw: (m: mat4, v: vec3) => void) => {
-                            for (const instr of drawInstructions) {
-                                mat4.multiply(m, m, instr.mat);
-                                draw(m, instr.v);
-                                mat4.multiply(m, m, instr.inv);
-                            }
-                            mat4.multiply(m, m, matrix);
-                            return m;
-                        }];
-                    }))
+                executions
             }
         })
     }

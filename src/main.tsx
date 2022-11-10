@@ -4,12 +4,11 @@ import App from './App'
 import { MainCanvas } from './canvas/MainCanvas'
 import './index.css'
 import './code-editor/CodeEditor.css'
-import { initCodeEditor } from "./code-editor/CodeEditor"
+import { initCodeEditor, LSystemCodeEditor } from "./code-editor/CodeEditor"
 
-initCodeEditor();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <MainCanvas></MainCanvas>
+    <App></App>
   </React.StrictMode>
 )

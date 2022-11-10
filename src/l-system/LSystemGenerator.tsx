@@ -30,7 +30,6 @@ export function applyLSystem<T>(application: LSystemApplication<T>, code: T[]): 
         matrix = application.executions.get(instruction)?.(mat4.clone(matrix), draw) ?? matrix;
         //transformations.push(matrix);
     }
-    console.log(transformations);
     return {
         transformations,
         composedTransformation: matrix
@@ -94,7 +93,6 @@ export function optimizeLSystemSpec(spec: LSystemSpecification<string>):
 }
 
 export function iterateLSystem(spec: LSystemSpecification<number>, iterations: number) {
-    console.log(spec);
     let arr = spec.axiom.concat();
     for (let i = 0; i < iterations; i++) {
         arr = arr.map(e => spec.substitutions.get(e) ?? e).flat();
