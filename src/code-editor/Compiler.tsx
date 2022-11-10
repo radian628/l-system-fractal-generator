@@ -346,11 +346,23 @@ export function compile(src: string): Result<
             app: {
                 executions: new Map(
                     Array.from(codeMap.entries()).map(([k, v]) => {
+                        const drawInstructions: {
+                            mat: mat4,
+                            inv: mat4,
+                            v: vec3
+                        }[] = [];
+                        const matrix = mat4.create();
+                        for (let instr of v.commands) {
+                            lSystemFunctionTable[instr.name][0]?.fn
+                                (matrix, (m, v) => drawInstructions.push({ v, mat: mat4.clone(m), inv: mat4.invert(mat4.create(), m)}), ...instr.operands);
+                        }
                         return [k, (m: mat4, draw: (m: mat4, v: vec3) => void) => {
-                            for (let instr of v.commands) {
-                                lSystemFunctionTable[instr.name][0]?.fn
-                                    (m, draw, ...instr.operands);
+                            for (const instr of drawInstructions) {
+                                mat4.multiply(m, m, instr.mat);
+                                draw(m, instr.v);
+                                mat4.multiply(m, m, instr.inv);
                             }
+                            mat4.multiply(m, m, matrix);
                             return m;
                         }];
                     }))

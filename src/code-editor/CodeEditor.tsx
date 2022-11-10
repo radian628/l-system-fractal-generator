@@ -35,10 +35,10 @@ left :
   rz angle2;
 
 right :
-  rz -1*angle2;
+  rz -1*angle2*1.4;
 
 pop :
-  rz angle2,
+  rz angle2*0.4,
   s 1.25,
   ry -1*angle1,
   dy -1;
