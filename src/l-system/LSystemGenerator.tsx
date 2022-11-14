@@ -95,9 +95,69 @@ export function optimizeLSystemSpec(spec: LSystemSpecification<string>):
 export function iterateLSystem(spec: LSystemSpecification<number>, iterations: number) {
     let arr = spec.axiom.concat();
     for (let i = 0; i < iterations; i++) {
-        arr = arr.map(e => spec.substitutions.get(e) ?? e).flat();
+        let arr2 = [];
+        for (let j = 0; j < arr.length; j++) {
+            const sub = spec.substitutions.get(arr[j]);
+            if (!sub) {
+                arr2.push(arr[j]);
+                continue;
+            }
+            for (let k = 0; k < sub.length; k++) {
+                arr2.push(sub[k]);
+            }
+        }
+        arr = arr2;
     }
     return arr;
+}
+
+export function getIteratedLSystemLength<T>(spec: LSystemSpecification<T>, iterations: number) {
+    const lengthCache = new Map<T, Map<number, number>>();
+    function getLength(element: T, iterations: number): number {
+        const cached = lengthCache.get(element)?.get(iterations);
+        if (cached !== undefined) {
+            return cached;
+        }
+        const sub = spec.substitutions.get(element);
+        if (!sub || iterations == 0) return 1;
+        const value = sub.reduce((prev, curr) => getLength(curr, iterations - 1) + prev, 0);
+        let tLengthCache = lengthCache.get(element);
+        if (!tLengthCache) {
+            tLengthCache = new Map();
+            lengthCache.set(element, tLengthCache);
+        }
+        tLengthCache.set(iterations, value);
+        return value;
+    }
+    return spec.axiom.reduce((prev, curr) => getLength(curr, iterations) + prev, 0);
+}
+
+export function getIteratedLSystemDrawCount<T>(spec: LSystemSpecification<T>, app: LSystemApplication<T>, iterations: number) {
+    const lengthCache = new Map<T, Map<number, number>>();
+    function getDrawCount(element: T) {
+        let drawCounter = 0;
+        let draw = (m: mat4, v: vec3) => drawCounter++;
+        let m = mat4.create();
+        app.executions.get(element)?.(m, draw);
+        return drawCounter;
+    }
+    function getLength(element: T, iterations: number): number {
+        const cached = lengthCache.get(element)?.get(iterations);
+        if (cached !== undefined) {
+            return cached;
+        }
+        const sub = spec.substitutions.get(element);
+        if (!sub || iterations == 0) return getDrawCount(element);
+        const value = sub.reduce((prev, curr) => getLength(curr, iterations - 1) + prev, 0);
+        let tLengthCache = lengthCache.get(element);
+        if (!tLengthCache) {
+            tLengthCache = new Map();
+            lengthCache.set(element, tLengthCache);
+        }
+        tLengthCache.set(iterations, value);
+        return value;
+    }
+    return spec.axiom.reduce((prev, curr) => getLength(curr, iterations) + prev, 0);
 }
 
 export type OptAndApplyLSystemResult = {

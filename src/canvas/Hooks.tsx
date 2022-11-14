@@ -6,16 +6,11 @@ import DISP_VERT_SHADER from "./l-system-display.vert?raw";
 import DISP_FRAG_SHADER from "./l-system-display.frag?raw";
 import { bindProgram, getProgramFromStrings, Matrix4, setUniforms } from "../webgl-helpers/Shader";
 import { bindBuffer, bindBufferBase, bufferData, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
-import { bindVertexArray, createVertexArray } from "../webgl-helpers/VertexArray";
-import { applyLSystem, iterateLSystem, LSystemApplication, mapLSystemApplication, optimizeAndApplyLSystem, optimizeLSystemSpec } from "../l-system/LSystemGenerator";
-import { mat4, vec3 } from "gl-matrix";
-import { bindTransformFeedback } from "../webgl-helpers/TransformFeedback";
-import { transform } from "typescript";
 import { cubeIndices, cubeVertices } from "./VertexData";
 import { deindex } from "../webgl-helpers/WebGLUtils";
 import { LSystemBufferData, LSystemToBuffers } from "../l-system/LSystemToBuffers";
 import { compile, LSystemDSLCompilerOutput } from "../code-editor/Compiler";
-import { sampleCode } from "../code-editor/CodeEditor";
+import { getIteratedLSystemDrawCount, getIteratedLSystemLength } from "../l-system/LSystemGenerator";
 
 export function useUpToDate<T>(state: T) {
     const ref = useRef<T>(state);
@@ -58,18 +53,12 @@ function createWebGLState(
     gl: WebGL2RenderingContext,     
     options: {
         lSystem: LSystemDSLCompilerOutput
-    }
+    },
+    genProgram: WebGLProgram,
+    dispProgram: WebGLProgram
 ): Result<WebGLState, string> {
     const tf = gl.createTransformFeedback();
     if (!tf) return err("Failed to create transform feedback.");
-    const genProgram = getProgramFromStrings(gl, GEN_VERT_SHADER, GEN_FRAG_SHADER, {
-        varyings: ["pos", "normal"],
-        bufferMode: gl.INTERLEAVED_ATTRIBS
-    });
-    if (!genProgram.ok) return err("Failed to create shader program.");
-
-    const dispProgram = getProgramFromStrings(gl, DISP_VERT_SHADER, DISP_FRAG_SHADER);
-    if (!dispProgram.ok) return err("Failed to create shader program.");
 
     const deindexedCubeVertices = new Float32Array(deindex(cubeVertices, cubeIndices, 4 * 6));
 
@@ -79,24 +68,30 @@ function createWebGLState(
     const compiledLSys = options.lSystem;
     //if (!compiledLSys.ok) return err(JSON.stringify(compiledLSys.data));
 
+
+    let iterations = 1;
+    while (getIteratedLSystemDrawCount(compiledLSys.spec, compiledLSys.app, iterations) < 100_000 && iterations < 30) {
+        iterations++;
+    }
+
     const lsbd = LSystemToBuffers(
         gl,
         {
-            meshGenProgram: genProgram.data,
-            meshDisplayProgram: dispProgram.data,
+            meshGenProgram: genProgram,
+            meshDisplayProgram: dispProgram,
             cubeBuffer: deindexedCubeBuffer.data,
             tf
         },
         compiledLSys.spec,
         compiledLSys.app,
-        5,
-        5
+        Math.floor(iterations / 2),
+        iterations - Math.floor(iterations / 2)
     );
     if (!lsbd.ok) return err("Failed to convert L system to buffers.");
 
     return ok({
         gl,
-        program: dispProgram.data,
+        program: dispProgram,
 
         lSystemBufferData: lsbd.data
     });
@@ -134,15 +129,34 @@ export function useWebGLState(
                 canvasRef.current.height = window.innerHeight;
             }
         });
-    })
+    });
+
+    const genProgramRef = useRef<WebGLProgram>();
+    const dispProgramRef = useRef<WebGLProgram>();
 
     useAnimationFrame((time) => {
         const gl = canvasRef.current?.getContext("webgl2");
         if (!gl) return setWebGLError(err("Failed to create WebGL context."));
 
+        if (!genProgramRef.current) {
+            const genProgram = getProgramFromStrings(gl, GEN_VERT_SHADER, GEN_FRAG_SHADER, {
+                varyings: ["pos", "normal"],
+                bufferMode: gl.INTERLEAVED_ATTRIBS
+            });
+            if (!genProgram.ok) return;
+            genProgramRef.current = genProgram.data;
+            return;
+        }
+        
+        if (!dispProgramRef.current) {
+            const dispProgram = getProgramFromStrings(gl, DISP_VERT_SHADER, DISP_FRAG_SHADER);
+            if (!dispProgram.ok) return;
+            dispProgramRef.current = dispProgram.data;
+            return;
+        }
+
         if (!stateRef.current) {
-            console.log("got here", optionsUpToDate);
-            const state = createWebGLState(gl, optionsUpToDate.current);
+            const state = createWebGLState(gl, optionsUpToDate.current, genProgramRef.current, dispProgramRef.current);
 
             if (!state.ok) return setWebGLError(err(state.data));
 

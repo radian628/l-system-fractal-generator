@@ -4,13 +4,21 @@ import { programBinding, setProgramBinding, shaderCache } from "./Shader";
 import { textureBindings } from "./Texture";
 import { setVertexArrayBinding, vertexArrayBinding } from "./VertexArray";
 
-export type Result<Ok, Err> = {
+export type Result<Ok, Err> = ResultOk<Ok> | ResultErr<Err>;
+
+export type ResultOk<Ok> = {
   ok: true,
   data: Ok
-} | {
+};
+
+export type ResultErr<Err> = {
   ok: false,
   data: Err
 };
+
+export function isok<Ok, Err>(data: Result<Ok, Err>): data is ResultOk<Ok> {
+  return data.ok;
+}
 
 export function ok<Ok, Err>(data: Ok): Result<Ok, Err> {
   return { ok: true, data }

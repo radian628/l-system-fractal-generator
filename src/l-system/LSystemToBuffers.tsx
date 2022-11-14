@@ -49,7 +49,7 @@ export function LSystemToBuffers(
         
         const transformationBuffer = createBufferWithData(gl, new Float32Array(
             matrices.map(m => Array.from(m)).flat() ?? []
-        ), gl.STATIC_DRAW, gl.ARRAY_BUFFER);
+        ), gl.STREAM_DRAW, gl.ARRAY_BUFFER);
         if (!transformationBuffer.ok) return transformationBuffer;
 
         addDataToVertexArray(
@@ -115,6 +115,8 @@ export function LSystemToBuffers(
         bindTransformFeedback(gl, null);
 
         gl.disable(gl.RASTERIZER_DISCARD);
+
+        gl.deleteBuffer(transformationBuffer.data);
 
         bindBufferBase(gl, gl.TRANSFORM_FEEDBACK_BUFFER, 0, 
             null);

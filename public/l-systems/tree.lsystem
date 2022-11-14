@@ -1,0 +1,42 @@
+// defined constants
+angle1 = 123;
+angle2 = 30;
+scale1 = 0.8;
+scale2 = 0.95;
+offset = 0.4;
+
+// production rule
+branch -> 
+  push
+  left
+  branch
+  right
+  branch
+  pop;
+
+// code corresponding to each symbol
+push :
+  my 1, 
+  ry angle1,
+  s scale1
+  ;
+
+left :
+  rz angle2
+  ;
+
+right :
+  s scale2,
+  rz -1*angle2*(1+offset)
+  ;
+
+pop :
+  rz angle2*offset,
+  s 1/scale1,
+  ry -1*angle1,
+  s 1/scale2,
+  dy -1
+  ;
+
+// start with a "branch" symbol
+^ branch;

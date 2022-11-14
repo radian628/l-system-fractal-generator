@@ -25,6 +25,8 @@ export function MainCanvas(props: { lSystem: LSystemDSLCompilerOutput }) {
     const glState = useWebGLState(canvasRef, {
         lSystem: props.lSystem
     }, (time, gls) => {
+        if (!document.hasFocus()) return;
+
         const currentRotation = 
         mat4.mul(
             mat4.create(),

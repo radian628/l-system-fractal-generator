@@ -1,0 +1,42 @@
+x -> 
+  rx 
+  lz
+  x
+  f
+  rx
+  lz
+  x 
+  f
+  x
+  ly
+  f
+  rx
+  rz
+  rz
+  x 
+  f
+  x
+  lx 
+  f 
+  ry 
+  rz 
+  rz 
+  x 
+  f 
+  x 
+  ly 
+  f 
+  rz 
+  x 
+  ly 
+  rz;
+
+f: dy 1;
+lx: rz 90;
+rx: rz -90;
+ly: rx 90;
+ry: rx -90;
+lz: ry 90;
+rz: ry -90;
+
+^ x;

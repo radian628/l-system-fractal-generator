@@ -1,0 +1,8 @@
+A -> L B F R A F A R F B L; 
+B -> R A F L B F B L F A R;
+
+F: dy 1;
+L: rx -90;
+R: rx 90;
+
+^ A;

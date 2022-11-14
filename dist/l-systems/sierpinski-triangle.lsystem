@@ -1,0 +1,22 @@
+fwd1 -> 
+  fwd1
+  left
+  fwd2
+  right
+  fwd1
+  right
+  fwd2
+  left
+  fwd1;
+
+fwd2 ->
+  fwd2
+  fwd2;
+
+fwd1: dy 1;
+fwd2: dy 1;
+left: rx -120;
+right: rx 120;
+
+
+^ fwd1 left fwd2 left fwd2;

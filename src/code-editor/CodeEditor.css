@@ -3,9 +3,24 @@
     top: 0px;
     left: 0px;
     height: 100vh;
-    background-color: #00000088;
+    background-color: #000000BB;
     z-index: 1;
     transition: left 0.1s;
+}
+
+#code-editor-content-root {
+    overflow: auto;
+    height: 100vh;
+    color: white;
+    font-family: sans-serif;
+}
+
+#code-editor-content-root input {
+    background: black;
+    color: white;
+    border-radius: 5px;
+    border: none;
+    margin-left: 10px;
 }
 
 .hover-expander {
