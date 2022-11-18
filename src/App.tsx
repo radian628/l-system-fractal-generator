@@ -16,6 +16,8 @@ function App() {
 
     const [additionalErrors, setAdditionalErrors] = useState<CompilerError[]>([]);
 
+    const [segments, setSegments] = useState(10_000);
+
     useEffect(() => {
         setModifiedConstants(new Map());
     }, [lSystemAST]);
@@ -43,9 +45,12 @@ function App() {
             setAdditionalErrors={setAdditionalErrors}
             modifiedConstants={modifiedConstants}
             setModifiedConstants={setModifiedConstants}
+            segments={segments}
+            setSegments={setSegments}
         ></LSystemCodeEditor>
         {lSystem && <MainCanvas
             lSystem={lSystem}
+            segments={segments}
         ></MainCanvas>}
     </React.Fragment>
 }

@@ -9,13 +9,16 @@ export function bindFramebuffer(gl: WebGL2RenderingContext, target: number, fram
   }
 }
 
+export type TexWithDims = {
+    tex: WebGLTexture,
+    width: number,
+    height: number
+};
+
 export type FramebufferWithAttachments = { 
     framebuffer: WebGLFramebuffer, 
-    attachments: {
-        tex: WebGLTexture,
-        width: number,
-        height: number
-    }[], 
+    attachments: TexWithDims[], 
+    depth?: TexWithDims
 };
 
 export function createFramebufferWithAttachments(
@@ -23,26 +26,48 @@ export function createFramebufferWithAttachments(
     attachments: {
         texture: TextureOptions,
         format: TextureFormatOptions
-    }[]
+    }[],
+    depth?: {
+        texture: TextureOptions,
+        format: TextureFormatOptions
+    }
 ): Result<FramebufferWithAttachments, string> {
     const fb = gl.createFramebuffer();
     if (!fb) return err("Failed to create framebuffer.");
     bindFramebuffer(gl, gl.FRAMEBUFFER, fb);
     let i = 0;
-    const attachmentTextures: FramebufferWithAttachments["attachments"] = [];
-    for (const attachment of attachments) {
+    const attachmentTextures: TexWithDims[] = [];
+
+    function createAndBindAttachment(attachmentPoint: number, attachment: { texture: TextureOptions, format: TextureFormatOptions })
+        : Result<TexWithDims, string> {
         const tex = createTextureWithFormat(gl, attachment.texture, attachment.format);
-        if (!tex.ok) return err("Failed to create framebuffer texture.");
-        attachmentTextures.push({
+        if (!tex.ok) return tex;
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, tex.data, 0);
+        return ok({
             tex: tex.data,
             width: attachment.format.width,
             height: attachment.format.height
         });
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, tex.data, 0);
+    }
+
+    for (const attachment of attachments) {
+        const tex = createAndBindAttachment(gl.COLOR_ATTACHMENT0 + i, attachment);
+        if (!tex.ok) return tex;
+        attachmentTextures.push(tex.data);
         i++;
     }
+
+    let depthTex = undefined;
+
+    if (depth) {
+        const tex = createAndBindAttachment(gl.DEPTH_ATTACHMENT, depth);
+        if (!tex.ok) return tex;
+        depthTex = tex;
+    }
+
     return ok({
         framebuffer: fb,
-        attachments: attachmentTextures
+        attachments: attachmentTextures,
+        depth: depthTex?.data
     });
 }

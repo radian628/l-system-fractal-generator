@@ -1,9 +1,9 @@
 import { err, ok, Result } from "./Common";
 
 export const textureBindings = new Map<number, Map<number, WebGLTexture>>();
-export function bindTexture(gl: WebGL2RenderingContext, target: number, unit: number, texture: WebGLTexture) {
+export function bindTexture(gl: WebGL2RenderingContext, target: number, unit: number, texture: WebGLTexture, force?: boolean) {
   const targetBindings = textureBindings.get(target);
-  if (targetBindings?.get(unit) !== texture) {
+  if (targetBindings?.get(unit) !== texture || force) {
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(target, texture);
     if (targetBindings) {
@@ -20,7 +20,9 @@ export type TextureOptions = {
   min: number,
   mag: number,
   swrap: number,
-  twrap: number
+  twrap: number,
+  compareMode?: number,
+  compareFunc?: number
 }
 
 export function createTexture(
@@ -34,6 +36,8 @@ export function createTexture(
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, options.mag);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, options.swrap);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, options.twrap);
+  if (options.compareMode) gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, options.compareMode);
+  if (options.compareFunc) gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, options.compareFunc);
   return ok(tex);
 }
 

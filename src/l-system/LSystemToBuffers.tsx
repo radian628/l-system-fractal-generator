@@ -1,4 +1,4 @@
-import { mat4 } from "gl-matrix";
+import { mat4, vec3 } from "gl-matrix";
 import { bindBufferBase, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
 import { err, ok, Result } from "../webgl-helpers/Common";
 import { bindProgram, Matrix4, setUniforms } from "../webgl-helpers/Shader";
@@ -103,8 +103,8 @@ export function LSystemToBuffers(
             outputVertexBuffer.data,
             true
         );
-        bindProgram(gl, glState.meshGenProgram);
         bindVertexArray(gl, vao);
+        bindProgram(gl, glState.meshGenProgram);
         setUniforms(gl, glState.meshGenProgram, {
             vp: [...mat4.create()] as Matrix4
         });
@@ -175,13 +175,10 @@ export function LSystemToBuffers(
 
 
 
-export function drawLSystemToBuffers(gl: WebGL2RenderingContext, displayProgram: WebGLProgram, vp: Matrix4, lsbd: LSystemBufferData) {
+export function drawLSystemToBuffers(gl: WebGL2RenderingContext, lsbd: LSystemBufferData, setProgramAndUniforms: () => void) {
     for (const data of lsbd.map.values()) {
         bindVertexArray(gl, data.vao);
-        bindProgram(gl, displayProgram);
-        setUniforms(gl, displayProgram, {
-            vp
-        });
+        setProgramAndUniforms();
         gl.drawArraysInstanced(gl.TRIANGLES, 0, data.submeshSize, data.instanceCount);
     }
 }

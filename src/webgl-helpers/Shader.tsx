@@ -2,8 +2,8 @@ import { err, ok, Result } from "./Common";
 import { bindTransformFeedback } from "./TransformFeedback";
 
 export let programBinding: WebGLProgram;
-export function bindProgram(gl: WebGL2RenderingContext, program: WebGLProgram) {
-  if (programBinding !== program) {
+export function bindProgram(gl: WebGL2RenderingContext, program: WebGLProgram, force?: boolean) {
+  if (programBinding !== program || force) {
     gl.useProgram(program);
     programBinding = program;
   }
@@ -109,6 +109,7 @@ export function setUniforms(gl: WebGL2RenderingContext, prog: WebGLProgram, unif
     const length = Array.isArray(data) ? data.length : 1;
     const fnName: `uniform${ComponentCount}${ComponentType}` = `uniform${length}${type}`;
     if (length == 1) {
+      //console.log(fnName, data);
       gl[fnName as `uniform1${ComponentType}`](loc, data as number);
     } else {
       //@ts-ignore

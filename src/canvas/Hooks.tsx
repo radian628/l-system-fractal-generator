@@ -4,6 +4,7 @@ import GEN_VERT_SHADER from "./l-system-generation.vert?raw";
 import GEN_FRAG_SHADER from "./l-system-generation.frag?raw";
 import DISP_VERT_SHADER from "./l-system-display.vert?raw";
 import DISP_FRAG_SHADER from "./l-system-display.frag?raw";
+import DISP_SHADOW_FRAG_SHADER from "./l-system-shadow-display.frag?raw";
 import { bindProgram, getProgramFromStrings, Matrix4, setUniforms } from "../webgl-helpers/Shader";
 import { bindBuffer, bindBufferBase, bufferData, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
 import { cubeIndices, cubeVertices } from "./VertexData";
@@ -11,6 +12,7 @@ import { deindex } from "../webgl-helpers/WebGLUtils";
 import { LSystemBufferData, LSystemToBuffers } from "../l-system/LSystemToBuffers";
 import { compile, LSystemDSLCompilerOutput } from "../code-editor/Compiler";
 import { getIteratedLSystemDrawCount, getIteratedLSystemLength } from "../l-system/LSystemGenerator";
+import { createFramebufferWithAttachments, FramebufferWithAttachments } from "../webgl-helpers/Framebuffer";
 
 export function useUpToDate<T>(state: T) {
     const ref = useRef<T>(state);
@@ -44,18 +46,44 @@ export function useAnimationFrame(callback: (time: number) => void) {
 
 type WebGLState = {
     gl: WebGL2RenderingContext,
-    program: WebGLProgram,
-    lSystemBufferData: LSystemBufferData
+    lSystemBufferData: LSystemBufferData,
+    shadowFramebuffer: FramebufferWithAttachments,
+    programs: Programs
 }
 
+function createShadowFramebuffer(gl: WebGL2RenderingContext): Result<FramebufferWithAttachments, string> {
+    return createFramebufferWithAttachments(gl, [], {
+        texture: {
+            min: gl.LINEAR,
+            mag: gl.LINEAR,
+            swrap: gl.REPEAT,
+            twrap: gl.REPEAT,
+            compareMode: gl.COMPARE_REF_TO_TEXTURE,
+            compareFunc: gl.LEQUAL
+        },
+        format: {
+            width: 1024,
+            height: 1024,
+            internalformat: gl.DEPTH_COMPONENT32F,
+            format: gl.DEPTH_COMPONENT,
+            type: gl.FLOAT
+        }
+    });
+}
+
+type Programs = {
+    gen: WebGLProgram,
+    disp: WebGLProgram,
+    shadow: WebGLProgram
+}
 
 function createWebGLState(
     gl: WebGL2RenderingContext,     
     options: {
-        lSystem: LSystemDSLCompilerOutput
+        lSystem: LSystemDSLCompilerOutput,
+        segments: number
     },
-    genProgram: WebGLProgram,
-    dispProgram: WebGLProgram
+    programs: Programs
 ): Result<WebGLState, string> {
     const tf = gl.createTransformFeedback();
     if (!tf) return err("Failed to create transform feedback.");
@@ -66,19 +94,17 @@ function createWebGLState(
     if (!deindexedCubeBuffer.ok) return err("Failed to create deindexed cube buffer");
 
     const compiledLSys = options.lSystem;
-    //if (!compiledLSys.ok) return err(JSON.stringify(compiledLSys.data));
-
 
     let iterations = 1;
-    while (getIteratedLSystemDrawCount(compiledLSys.spec, compiledLSys.app, iterations) < 100_000 && iterations < 30) {
+    while (getIteratedLSystemDrawCount(compiledLSys.spec, compiledLSys.app, iterations) < options.segments && iterations < 30) {
         iterations++;
     }
 
     const lsbd = LSystemToBuffers(
         gl,
         {
-            meshGenProgram: genProgram,
-            meshDisplayProgram: dispProgram,
+            meshGenProgram: programs.gen,
+            meshDisplayProgram: programs.disp,
             cubeBuffer: deindexedCubeBuffer.data,
             tf
         },
@@ -89,11 +115,16 @@ function createWebGLState(
     );
     if (!lsbd.ok) return err("Failed to convert L system to buffers.");
 
+    const shadowFramebuffer = createShadowFramebuffer(gl);
+    if (!shadowFramebuffer.ok) return shadowFramebuffer;
+
     return ok({
         gl,
-        program: dispProgram,
+        programs,
 
-        lSystemBufferData: lsbd.data
+        lSystemBufferData: lsbd.data,
+
+        shadowFramebuffer: shadowFramebuffer.data
     });
 }
 
@@ -102,7 +133,8 @@ function createWebGLState(
 export function useWebGLState(
     canvasRef: React.RefObject<HTMLCanvasElement | undefined>, 
     options: {
-        lSystem: LSystemDSLCompilerOutput
+        lSystem: LSystemDSLCompilerOutput,
+        segments: number
     },
     callback: (time: number, gls: WebGLState) => void
 ): {
@@ -118,7 +150,7 @@ export function useWebGLState(
 
     useEffect(() => {
         stateRef.current = undefined;
-    }, [options.lSystem]);
+    }, [options.lSystem, options.segments]);
 
     useEffect(() => {
         window.addEventListener("resize", e => {
@@ -133,6 +165,7 @@ export function useWebGLState(
 
     const genProgramRef = useRef<WebGLProgram>();
     const dispProgramRef = useRef<WebGLProgram>();
+    const dispShadowProgramRef = useRef<WebGLProgram>();
 
     useAnimationFrame((time) => {
         const gl = canvasRef.current?.getContext("webgl2");
@@ -154,9 +187,20 @@ export function useWebGLState(
             dispProgramRef.current = dispProgram.data;
             return;
         }
+        
+        if (!dispShadowProgramRef.current) {
+            const dispShadowProgram = getProgramFromStrings(gl, DISP_VERT_SHADER, DISP_SHADOW_FRAG_SHADER);
+            if (!dispShadowProgram.ok) return;
+            dispShadowProgramRef.current = dispShadowProgram.data;
+            return;
+        }
 
         if (!stateRef.current) {
-            const state = createWebGLState(gl, optionsUpToDate.current, genProgramRef.current, dispProgramRef.current);
+            const state = createWebGLState(gl, optionsUpToDate.current, {
+                gen: genProgramRef.current,
+                disp: dispProgramRef.current,
+                shadow: dispShadowProgramRef.current
+            });
 
             if (!state.ok) return setWebGLError(err(state.data));
 

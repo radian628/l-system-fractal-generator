@@ -219,6 +219,30 @@ export function ConstantInput(props: {
   </div>
 }
 
+export function EnumInput<T>(props: {
+  alternatives: [T, string][]
+  val: T,
+  setVal: (t: T) => void 
+}) {
+  const [strValue, setStrValue] 
+      = useState(props.alternatives.find(([value, label]) => value == props.val)?.[1] ?? "");
+
+  useEffect(() => {
+      props.setVal(props.alternatives.find(([value, label]) => label == strValue)?.[0] ?? props.val);
+  }, [strValue]);
+
+  return <select
+      value={strValue}
+      onChange={e => {
+          setStrValue(e.currentTarget.value);
+      }}
+  >
+      {props.alternatives.map(([altVal, altName], i) => {
+          return <option key={altName} value={altName}>{altName}</option>
+      })}
+  </select>
+}
+
 export function LSystemCodeEditor(props: {
   onSuccessfulRecompile: (o: ast.Root<ast.Range>) => void,
   lastSuccessfulLSystem: ast.Root<ast.Range> | undefined,
@@ -226,7 +250,9 @@ export function LSystemCodeEditor(props: {
   setAdditionalErrors: (err: CompilerError[]) => void,
   setLSystem: (lsystem: LSystemDSLCompilerOutput) => void,
   modifiedConstants: Map<string, number>,
-  setModifiedConstants: (c: Map<string, number>) => void
+  setModifiedConstants: (c: Map<string, number>) => void,
+  segments: number,
+  setSegments: (n: number) => void
 }) {
   const [elem, setElem] = useState<HTMLElement>();
 
@@ -251,17 +277,59 @@ export function LSystemCodeEditor(props: {
 
   const [elemSize, setElemSize] = useState(0)
 
+  const [maxSegments, setMaxSegments] = useState(100_000);
+
+  const [preset, setPreset] = useState("tree.lsystem");
+
   return <div
     onMouseOver={e => setIsHovered(true)}
     onMouseOut={e => setIsHovered(false)}
     style={{ left: isHovered ? 0 : (-elemSize + 1) + "px" }}
     id="code-editor-root" >
-      <div id="code-editor-content-root"
-        ref={e => { 
-          if (!e) return; 
-          setElem(e);
-        }}
-      >
+      <div id="code-editor-content-root">
+        <div>
+          <label>L-system Preset</label>
+          <EnumInput
+            val={preset}
+            setVal={async p => {
+              setPreset(p);
+              //console.log(viewRef.current?.state.doc.length);
+              viewRef.current?.update([
+                viewRef.current?.state.update({ changes: {
+                  from: 0,
+                  to: viewRef.current?.state.doc.length,
+                  insert: await (await fetch("./l-systems/" + p)).text()
+                }})
+              ]);
+            }}
+            alternatives={[
+              ["tree.lsystem", "Tree"],
+              ["sierpinski-triangle.lsystem", "Sierpinski Triangle"],
+              ["hilbert-curve.lsystem", "Hilbert Curve"],
+              ["hilbert-curve-3d.lsystem", "3D  Hilbert Curve"],
+            ]}
+          ></EnumInput>
+        </div>
+        <div>
+          <label>Segments</label>
+          <NumberInput
+            min={0}
+            max={maxSegments}
+            val={props.segments}
+            setVal={v => props.setSegments(v)}
+            sensitivity={30}
+          ></NumberInput>
+        </div>
+        <div>
+          <label>Max Segments</label>
+          <NumberInput
+            min={0}
+            max={999999999999}
+            val={maxSegments}
+            setVal={v => setMaxSegments(v)}
+            sensitivity={30}
+          ></NumberInput>
+        </div>
         {props.lastSuccessfulLSystem
         && Array.from(props.lastSuccessfulLSystem.constants.entries())
         .filter(([constName, constValue]) => constValue.type == ast.Type.NUMBER)
@@ -275,20 +343,7 @@ export function LSystemCodeEditor(props: {
             setVal={val => {
               props.setModifiedConstants(
                 props.modifiedConstants.set(constName, val)
-              );
-
-
-
-              // viewRef.current?.dispatch({
-              //   changes: {
-              //     from: constValue.start,
-              //     to: constValue.end,
-              //     insert: val.toString()
-              //   }
-              // });
-              // const state = viewRef.current?.state.sliceDoc();
-              // if (!state) return;
-              
+              );              
               if (!props.lastSuccessfulLSystem) return;
               const compilerOutput = compileAST(props.lastSuccessfulLSystem, props.modifiedConstants);
               if (compilerOutput.ok) {
@@ -296,12 +351,15 @@ export function LSystemCodeEditor(props: {
               } else {
                 props.setAdditionalErrors(compilerOutput.data);
               }
-
-              
-
             }}
           ></ConstantInput>
         })}
+        <div id="code-editor-textarea-root"
+          ref={e => { 
+            if (!e) return; 
+            setElem(e);
+          }}
+        ></div>
       </div>
       <div className="hover-expander">▶</div>
     </div>
