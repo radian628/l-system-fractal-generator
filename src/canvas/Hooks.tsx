@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { err, ok, Result } from "../webgl-helpers/Common";
 import GEN_VERT_SHADER from "./l-system-generation.vert?raw";
 import GEN_FRAG_SHADER from "./l-system-generation.frag?raw";
-import DISP_VERT_SHADER from "./l-system-display.vert?raw";
-import DISP_FRAG_SHADER from "./l-system-display.frag?raw";
+import GBUFFER_VERT_SHADER from "./l-system-gbuffer.vert?raw";
+import GBUFFER_FRAG_SHADER from "./l-system-gbuffer.frag?raw";
 import DISP_SHADOW_FRAG_SHADER from "./l-system-shadow-display.frag?raw";
 import { bindProgram, getProgramFromStrings, Matrix4, setUniforms } from "../webgl-helpers/Shader";
 import { bindBuffer, bindBufferBase, bufferData, createBuffer, createBufferWithData } from "../webgl-helpers/Buffer";
@@ -71,9 +71,61 @@ function createShadowFramebuffer(gl: WebGL2RenderingContext): Result<Framebuffer
     });
 }
 
+function createGBufferFramebuffer(gl: WebGL2RenderingContext, width: number, height: number): Result<FramebufferWithAttachments, string> {
+  const dimensions = { width, height };
+  const texFilters = {
+    min: gl.LINEAR,
+    mag: gl.LINEAR,
+    swrap: gl.REPEAT,
+    twrap: gl.REPEAT,
+  }
+  return createFramebufferWithAttachments(gl, [
+    { // position buffer
+      texture: texFilters,
+      format: {
+        ...dimensions,
+        internalformat: gl.RGB32F,
+        format: gl.RGB,
+        type: gl.FLOAT
+      }
+    },
+    { // normal buffer
+      texture: texFilters,
+      format: {
+        ...dimensions,
+        internalformat: gl.RGB8,
+        format: gl.RGB,
+        type: gl.UNSIGNED_BYTE
+      }
+    },
+    { // albedo buffer (specular in alpha channel)
+      texture: texFilters,
+      format: {
+        ...dimensions,
+        internalformat: gl.RGBA8,
+        format: gl.RGBA,
+        type: gl.UNSIGNED_BYTE
+      }
+    }
+  ], { // depth buffer (for depth testing)
+    texture: {
+      ...texFilters,
+      compareMode: gl.COMPARE_REF_TO_TEXTURE,
+      compareFunc: gl.LEQUAL
+    },
+    format: {
+      ...dimensions,
+      internalformat: gl.DEPTH_COMPONENT32F,
+      format: gl.DEPTH_COMPONENT,
+      type: gl.FLOAT
+    }
+  });
+}
+
 type Programs = {
     gen: WebGLProgram,
-    disp: WebGLProgram,
+    gbuffer: WebGLProgram,
+    display: WebGLProgram,
     shadow: WebGLProgram
 }
 
@@ -104,7 +156,7 @@ function createWebGLState(
         gl,
         {
             meshGenProgram: programs.gen,
-            meshDisplayProgram: programs.disp,
+            meshDisplayProgram: programs.gbuffer,
             cubeBuffer: deindexedCubeBuffer.data,
             tf
         },
@@ -164,7 +216,7 @@ export function useWebGLState(
     });
 
     const genProgramRef = useRef<WebGLProgram>();
-    const dispProgramRef = useRef<WebGLProgram>();
+    const gbufferProgramRef = useRef<WebGLProgram>();
     const dispShadowProgramRef = useRef<WebGLProgram>();
 
     useAnimationFrame((time) => {
@@ -181,15 +233,15 @@ export function useWebGLState(
             return;
         }
         
-        if (!dispProgramRef.current) {
-            const dispProgram = getProgramFromStrings(gl, DISP_VERT_SHADER, DISP_FRAG_SHADER);
+        if (!gbufferProgramRef.current) {
+            const dispProgram = getProgramFromStrings(gl, GBUFFER_VERT_SHADER, GBUFFER_FRAG_SHADER);
             if (!dispProgram.ok) return;
-            dispProgramRef.current = dispProgram.data;
+            gbufferProgramRef.current = dispProgram.data;
             return;
         }
         
         if (!dispShadowProgramRef.current) {
-            const dispShadowProgram = getProgramFromStrings(gl, DISP_VERT_SHADER, DISP_SHADOW_FRAG_SHADER);
+            const dispShadowProgram = getProgramFromStrings(gl, GBUFFER_VERT_SHADER, DISP_SHADOW_FRAG_SHADER);
             if (!dispShadowProgram.ok) return;
             dispShadowProgramRef.current = dispShadowProgram.data;
             return;
@@ -198,7 +250,7 @@ export function useWebGLState(
         if (!stateRef.current) {
             const state = createWebGLState(gl, optionsUpToDate.current, {
                 gen: genProgramRef.current,
-                disp: dispProgramRef.current,
+                gbuffer: gbufferProgramRef.current,
                 shadow: dispShadowProgramRef.current
             });
 

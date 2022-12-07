@@ -19,7 +19,4 @@ void main() {
     pos = partly_transformed_position.xyz;
     normal = transformed_normal;
     gl_Position = transformed_position;
-    // pos = in_pos;
-    // normal = in_normal;
-    // gl_Position = vec4(in_pos.xy, 0.5, 1.0);
 }
